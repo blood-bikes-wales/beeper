@@ -1,0 +1,29 @@
+{
+	"name": "derailleur",
+	"version": "1.0.0",
+	"description": "SMS routing tool for biketrac",
+	"license": "ISC",
+	"author": "",
+	"type": "commonjs",
+	"main": "dist/index.js",
+	"scripts": {
+		"build": "tsc",
+		"watch": "tsc --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"run": "tsc && npx functions-framework --target=receiveMessage --source=dist/index.js"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.15",
+		"@types/node": "^25.8.0",
+		"typescript": "^6.0.3"
+	},
+	"dependencies": {
+		"@google-cloud/functions-framework": "^5.0.2",
+		"axios": "^1.16.1",
+		"dotenv": "^17.4.2",
+		"twilio": "^6.0.2"
+	}
+}
