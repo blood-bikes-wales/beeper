@@ -1,0 +1,113 @@
+{
+	"volunteer": {
+		"id": 108235,
+		"org_id": 748,
+		"url": "/directory/108235?format=json",
+		"name": "Dana Thompson [COM,Sta,OFF]",
+		"is_support_person": true,
+		"account": {
+			"id": 111313,
+			"username": "bbw_dthompson"
+		},
+		"created_at": "2018-06-04T21:03:22.000Z",
+		"updated_at": "2026-05-22T21:16:52.000Z",
+		"creator": {
+			"id": 106678,
+			"name": "Controller Manager [E,MEM]",
+			"username": "controller@bloodbikes.wales"
+		},
+		"updater": {
+			"id": 108235,
+			"name": "Dana Thompson [COM,Sta,OFF]",
+			"username": "bbw_dthompson"
+		},
+		"volunteer_roles": [
+			{
+				"id": 325831,
+				"role": {
+					"id": 12929,
+					"name": "Everyone",
+					"suffix": null
+				}
+			},
+			{
+				"id": 325832,
+				"role": {
+					"id": 12933,
+					"name": "Controller",
+					"suffix": ""
+				}
+			},
+			{
+				"id": 505576,
+				"role": {
+					"id": 12993,
+					"name": "Trustees",
+					"suffix": "COM"
+				}
+			},
+			{
+				"id": 707221,
+				"role": {
+					"id": 20168,
+					"name": "Rota manager - controllers",
+					"suffix": ""
+				}
+			},
+			{
+				"id": 707693,
+				"role": {
+					"id": 12930,
+					"name": "Three Rings Champion",
+					"suffix": null
+				}
+			},
+			{
+				"id": 1055626,
+				"role": {
+					"id": 24636,
+					"name": "Trustees - Officers",
+					"suffix": "OFF"
+				}
+			},
+			{
+				"id": 1082590,
+				"role": {
+					"id": 12941,
+					"name": "Statistics",
+					"suffix": "Sta"
+				}
+			}
+		],
+		"volunteer_properties": [
+			{
+				"id": 836071,
+				"code": "first_name",
+				"type": "StringProperty",
+				"name": "First Name",
+				"value": "Dana"
+			},
+			{
+				"id": 836072,
+				"code": "surname",
+				"type": "StringProperty",
+				"name": "Surname",
+				"value": "Thompson"
+			},
+			{
+				"id": 836074,
+				"code": "telephone_mobile",
+				"type": "TelProperty",
+				"name": "Telephone (Mobile)",
+				"value": "07700900989"
+			},
+			{
+				"id": 836075,
+				"code": "email",
+				"type": "EmailProperty",
+				"name": "Email",
+				"value": "isaacs@example.com"
+			}
+		]
+	}
+}

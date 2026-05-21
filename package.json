@@ -1,0 +1,39 @@
+{
+	"name": "beeper",
+	"version": "1.0.0",
+	"description": "SMS routing tool for biketrac",
+	"license": "ISC",
+	"author": "",
+	"type": "commonjs",
+	"main": "dist/index.js",
+	"scripts": {
+		"build": "tsc",
+		"watch": "tsc --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"test": "jest",
+		"test:unit": "jest --testPathPatterns=unit",
+		"test:integration": "jest --testPathPatterns=integration",
+		"run": "tsc && npx functions-framework --target=receiveMessage --source=dist/index.js"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.15",
+		"@types/jest": "^30.0.0",
+		"@types/luxon": "^3.7.1",
+		"@types/node": "^25.8.0",
+		"@types/supertest": "^7.2.0",
+		"jest": "^30.4.2",
+		"nock": "^14.0.15",
+		"supertest": "^7.2.2",
+		"ts-jest": "^29.4.11",
+		"typescript": "^6.0.3"
+	},
+	"dependencies": {
+		"@google-cloud/functions-framework": "^5.0.2",
+		"axios": "^1.16.1",
+		"dotenv": "^17.4.2",
+		"luxon": "^3.7.2",
+		"twilio": "^6.0.2"
+	}
+}
