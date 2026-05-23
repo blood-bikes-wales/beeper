@@ -1,6 +1,22 @@
-export type VolunteerProperties = {};
+import type { VolunteerPropertyType } from "./VolunteerPropertyType.enum";
 
-export type DirectoryResponseType = {
+export type VolunteerProperty = {
+	code: string;
+	id: number;
 	name: string;
-	volunteer_properties: VolunteerProperties[];
+	type: VolunteerPropertyType;
+	value: string;
+};
+
+export type VolunteerType = {
+	name: string;
+	volunteer_properties: VolunteerProperty[];
+};
+
+export type VolunteerResponseType = {
+	volunteer: VolunteerType;
+};
+
+export type VolunteersResponseType = {
+	volunteers: VolunteerType[];
 };

@@ -1,0 +1,73 @@
+{
+	"volunteer": {
+		"id": 180262,
+		"org_id": 748,
+		"url": "/directory/259311?format=json",
+		"name": "Alex Taylor",
+		"is_support_person": false,
+		"account": {
+			"id": 258088,
+			"username": "bbw_ataylor"
+		},
+		"created_at": "2025-04-09T09:57:51.000Z",
+		"updated_at": "2026-05-09T06:22:55.000Z",
+		"creator": {
+			"id": 107135,
+			"name": "Morgan Davies [COM]",
+			"username": "bbw_north"
+		},
+		"updater": {
+			"id": 180262,
+			"name": "Alex Taylor",
+			"username": "bbw_ataylor"
+		},
+		"volunteer_roles": [
+			{
+				"id": 1019080,
+				"role": {
+					"id": 12929,
+					"name": "Everyone",
+					"suffix": null
+				}
+			},
+			{
+				"id": 1024540,
+				"role": {
+					"id": 12933,
+					"name": "Controller",
+					"suffix": ""
+				}
+			}
+		],
+		"volunteer_properties": [
+			{
+				"id": 2228197,
+				"code": "first_name",
+				"type": "StringProperty",
+				"name": "First Name",
+				"value": "Alex"
+			},
+			{
+				"id": 2228198,
+				"code": "surname",
+				"type": "StringProperty",
+				"name": "Surname",
+				"value": "Taylor"
+			},
+			{
+				"id": 2228199,
+				"code": "telephone_mobile",
+				"type": "TelProperty",
+				"name": "Telephone (Mobile)",
+				"value": "07700900999"
+			},
+			{
+				"id": 2228200,
+				"code": "email",
+				"type": "EmailProperty",
+				"name": "Email",
+				"value": "test@example.com"
+			}
+		]
+	}
+}
