@@ -50,6 +50,10 @@ describe("receiveMessage", () => {
 			.get("/directory/108235?format=json")
 			.reply(200, dutyTrusteeDirectoryFixture);
 
+		const INCOMING_BODY =
+			"Event Alert: Bike Over at 01/01/2024 10:32:30 for Device KS72RRV West/Swansea Tracer -276129403. Τo confirm theft call 0800 0496679";
+		const INCOMING_FROM = "+447896843243";
+
 		await supertest(getTestServer("receiveMessage"))
 			.post("/")
 			.send({
@@ -63,16 +67,28 @@ describe("receiveMessage", () => {
 				FromState: "",
 				SmsStatus: "received",
 				FromCity: "",
-				Body: "Event Alert: Bike Over at 01/01/2024 10:32:30 for Device KS72RRV West/Swansea Tracer -276129403. Τo confirm theft call 0800 0496679",
+				Body: INCOMING_BODY,
 				FromCountry: "GB",
 				To: "+447700900999",
 				ToZip: "",
 				NumSegments: "2",
 				MessageSid: "SM_MOCK",
 				AccountSid: "AC_MOCK",
-				From: "+447896843243",
+				From: INCOMING_FROM,
 				ApiVersion: "2010-04-01",
 			})
 			.expect(204);
+
+		expect(mockMessagesCreate).toHaveBeenCalledTimes(2);
+		expect(mockMessagesCreate).toHaveBeenNthCalledWith(1, {
+			body: INCOMING_BODY,
+			from: INCOMING_FROM,
+			to: "07700900999", // controller (fixture: directory-search-180262)
+		});
+		expect(mockMessagesCreate).toHaveBeenNthCalledWith(2, {
+			body: INCOMING_BODY,
+			from: INCOMING_FROM,
+			to: "07700900989", // duty trustee (fixture: directory-search-108235)
+		});
 	});
 });
