@@ -1,4 +1,5 @@
-<img width="1536" height="1024" alt="Repository Logo" src="https://github.com/user-attachments/assets/8b23173b-3e8e-41a7-a46d-006bc1477c7f" />
+<img width="1128" height="282" alt="Repository Image" src="https://github.com/user-attachments/assets/81141d6f-e211-44c6-9ec4-8ba70f496e41" />
+
 
 # beeper
 
