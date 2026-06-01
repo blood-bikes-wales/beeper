@@ -95,7 +95,9 @@ resource "google_cloudfunctions2_function" "beeper_function" {
 
     service_config {
         available_memory = "128Mi"
-        timeout_seconds  = 60
+        timeout_seconds  = 10
+        max_instance_count = 1
+        min_instance_count = 0
     }
 }
 
