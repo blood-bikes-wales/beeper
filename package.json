@@ -15,7 +15,8 @@
 		"test": "jest",
 		"test:unit": "jest --testPathPatterns=unit",
 		"test:integration": "jest --testPathPatterns=integration",
-		"run": "tsc && npx functions-framework --target=receiveMessage --source=dist/index.js"
+		"run": "tsc && npx functions-framework --target=receiveMessage --source=dist/index.js",
+		"package:deploy": "npm run build && rm -f dist.zip && zip -q dist.zip package.json package-lock.json -r dist"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.15",
