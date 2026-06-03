@@ -21,4 +21,8 @@ export default class Config {
 	static getThreeRingsApiKey(): string {
 		return required("THREE_RINGS_API_KEY");
 	}
+
+	static getGcpProjectId(): string {
+		return required("GCP_PROJECT_ID");
+	}
 }

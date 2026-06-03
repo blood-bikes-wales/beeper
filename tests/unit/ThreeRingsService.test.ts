@@ -192,7 +192,7 @@ describe("ThreeRingsService.getVolunteerForShift", () => {
 				RotaType.CONTROLLER,
 			),
 		).toThrow(
-			`More than one volunteer found for the 'Controller' shift on the current date`,
+			`0 volunteers found for the 'Controller' shift on the current date`,
 		);
 	});
 
@@ -208,7 +208,7 @@ describe("ThreeRingsService.getVolunteerForShift", () => {
 				RotaType.CONTROLLER,
 			),
 		).toThrow(
-			`More than one volunteer found for the 'Controller' shift on the current date`,
+			`2 volunteers found for the 'Controller' shift on the current date`,
 		);
 	});
 

@@ -15,7 +15,10 @@
 		"test": "jest",
 		"test:unit": "jest --testPathPatterns=unit",
 		"test:integration": "jest --testPathPatterns=integration",
-		"run": "tsc && npx functions-framework --target=receiveMessage --source=dist/index.js"
+		"run": "tsc && npx functions-framework --target=receiveMessage --source=dist/index.js",
+		"emulator": "gcloud beta emulators datastore start --project=beeper-local --host-port=localhost:8081",
+		"dev": "DATASTORE_EMULATOR_HOST=localhost:8081 DATASTORE_PROJECT_ID=beeper-local tsc && DATASTORE_EMULATOR_HOST=localhost:8081 DATASTORE_PROJECT_ID=beeper-local npx functions-framework --target=receiveMessage --source=dist/index.js",
+		"package:deploy": "npm run build && rm -f dist.zip && zip -q dist.zip package.json package-lock.json -r dist"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.15",
@@ -30,6 +33,7 @@
 		"typescript": "^6.0.3"
 	},
 	"dependencies": {
+		"@google-cloud/datastore": "^10.1.0",
 		"@google-cloud/functions-framework": "^5.0.2",
 		"axios": "^1.16.1",
 		"dotenv": "^17.4.2",
