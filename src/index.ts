@@ -3,7 +3,9 @@ import * as functions from "@google-cloud/functions-framework";
 
 import twilio from "twilio";
 import Config from "./config";
+import { ThreeRingsCachingRepository } from "./repository/ThreeRingsCachingRepository";
 import { ThreeRingsHttpRepository } from "./repository/ThreeRingsHttpRepository";
+import { MessageLogService } from "./service/message-log.service";
 import { ThreeRingsService } from "./service/three-rings";
 import { RotaType, VolunteerPropertyType } from "./types";
 import type { TwilioBody } from "./types/RequestBody.type";
@@ -16,7 +18,12 @@ const receiveMessage = async (req: Request, res: Response) => {
 		Config.getTwilioAuthToken(),
 	);
 
-	const threeRings = new ThreeRingsService(new ThreeRingsHttpRepository());
+	const logService = new MessageLogService();
+	const requestKey = await logService.logIncomingRequest(body);
+
+	const threeRings = new ThreeRingsService(
+		new ThreeRingsCachingRepository(new ThreeRingsHttpRepository()),
+	);
 	const currentDateTime = Utility.getCurrentDate();
 
 	const rota = await threeRings.getRotaExportForDay(currentDateTime);
@@ -52,6 +59,12 @@ const receiveMessage = async (req: Request, res: Response) => {
 			from: body.From,
 			to: phoneNumber,
 		});
+		await logService.logOutgoingMessage(
+			requestKey,
+			phoneNumber,
+			body.From,
+			body.Body,
+		);
 	}
 
 	return res.status(204).send({});
