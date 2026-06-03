@@ -68,7 +68,7 @@ export class ThreeRingsService {
 
 		if (matching[0]?.volunteers.length !== 1) {
 			throw new Error(
-				`More than one volunteer found for the '${rotaType}' shift on the current date: ${currentDateTime}`,
+				`${matching[0]?.volunteers.length} volunteers found for the '${rotaType}' shift on the current date: ${currentDateTime}`,
 			);
 		}
 

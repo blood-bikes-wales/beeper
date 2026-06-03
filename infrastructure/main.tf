@@ -26,6 +26,7 @@ module "project-services" {
         "cloudbuild.googleapis.com",
         "run.googleapis.com",
         "storage.googleapis.com",
+        "datastore.googleapis.com",
     ]
 
     disable_services_on_destroy = true
@@ -67,6 +68,12 @@ resource "google_storage_bucket_iam_member" "source_cloudbuild_reader" {
 resource "google_project_iam_member" "compute_cloudfunctions_developer" {
     project = data.google_project.current.project_id
     role    = "roles/cloudfunctions.developer"
+    member  = "serviceAccount:${local.compute_sa}"
+}
+
+resource "google_project_iam_member" "compute_datastore_user" {
+    project = data.google_project.current.project_id
+    role    = "roles/datastore.user"
     member  = "serviceAccount:${local.compute_sa}"
 }
 
