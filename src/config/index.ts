@@ -25,4 +25,19 @@ export default class Config {
 	static getGcpProjectId(): string {
 		return required("GCP_PROJECT_ID");
 	}
+
+	static resolveGcpProjectId(): string {
+		const projectId =
+			process.env["GOOGLE_CLOUD_PROJECT"] ??
+			process.env["DATASTORE_PROJECT_ID"] ??
+			process.env["GCP_PROJECT_ID"];
+
+		if (!projectId) {
+			throw new Error(
+				"No GCP project ID found. Set GOOGLE_CLOUD_PROJECT, DATASTORE_PROJECT_ID, or GCP_PROJECT_ID.",
+			);
+		}
+
+		return projectId;
+	}
 }

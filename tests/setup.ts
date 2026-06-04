@@ -8,3 +8,7 @@ axios.defaults.adapter = "http";
 process.env.THREE_RINGS_API_KEY = "test-api-key";
 process.env.TWILIO_ACCOUNT_SID = "test-sid";
 process.env.TWILIO_AUTH_TOKEN = "test-token";
+
+// Connect to the local Datastore emulator (started via `npm run emulator`).
+process.env.DATASTORE_EMULATOR_HOST = "localhost:8081";
+process.env.GCP_PROJECT_ID = "beeper-local";
