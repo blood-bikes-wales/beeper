@@ -7,19 +7,24 @@ import { ThreeRingsCachingRepository } from "./repository/ThreeRingsCachingRepos
 import { ThreeRingsHttpRepository } from "./repository/ThreeRingsHttpRepository";
 import { MessageLogService } from "./service/message-log.service";
 import { ThreeRingsService } from "./service/three-rings";
+import { isValidTwilioWebhook } from "./twilio-webhook";
 import { RotaType, VolunteerPropertyType } from "./types";
 import type { TwilioBody } from "./types/RequestBody.type";
 import Utility from "./utility";
 
 const receiveMessage = async (req: Request, res: Response) => {
+	if (!isValidTwilioWebhook(req)) {
+		return res.status(403).send("Forbidden");
+	}
+
 	const body = req.body as TwilioBody;
 	const client = twilio(
 		Config.getTwilioAccountSid(),
 		Config.getTwilioAuthToken(),
 	);
 
-	const logService = new MessageLogService();
-	const requestKey = await logService.logIncomingRequest(body);
+	const messageLogService = new MessageLogService();
+	const requestKey = await messageLogService.logIncomingRequest(body);
 
 	const threeRings = new ThreeRingsService(
 		new ThreeRingsCachingRepository(new ThreeRingsHttpRepository()),
@@ -59,7 +64,7 @@ const receiveMessage = async (req: Request, res: Response) => {
 			from: body.From,
 			to: phoneNumber,
 		});
-		await logService.logOutgoingMessage(
+		await messageLogService.logOutgoingMessage(
 			requestKey,
 			phoneNumber,
 			body.From,
