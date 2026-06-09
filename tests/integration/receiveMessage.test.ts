@@ -17,24 +17,42 @@ const datastoreKeysToClean = [
 	datastore.key(["ThreeRingsCache", "volunteer-108235"]),
 ];
 
+const MOCK_TWILIO_SIGNATURE = "test-twilio-signature";
+
 // Variables prefixed with "mock" are hoisted by ts-jest alongside jest.mock() factories.
 const mockMessagesCreate = jest.fn().mockResolvedValue({ sid: "SM_mock" });
 const mockValidateRequest = jest.fn().mockReturnValue(true);
+const mockGetExpectedTwilioSignature = jest
+	.fn()
+	.mockReturnValue("expected-signature");
 
 jest.mock("twilio", () => {
-	const twilioFn = jest.fn(() => ({
-		messages: {
-			create: mockMessagesCreate,
+	const twilioFn = Object.assign(
+		jest.fn(() => ({
+			messages: {
+				create: mockMessagesCreate,
+			},
+		})),
+		{
+			validateRequest: mockValidateRequest,
+			getExpectedTwilioSignature: mockGetExpectedTwilioSignature,
 		},
-	}));
-	(
-		twilioFn as { validateRequest: typeof mockValidateRequest }
-	).validateRequest = mockValidateRequest;
+	);
 	return {
 		__esModule: true,
 		default: twilioFn,
 	};
 });
+
+function postTwilioWebhook(
+	body: Record<string, string>,
+	signature = MOCK_TWILIO_SIGNATURE,
+) {
+	return supertest(getTestServer("receiveMessage"))
+		.post("/")
+		.set("X-Twilio-Signature", signature)
+		.send(body);
+}
 
 jest.mock("../../src/utility", () => ({
 	__esModule: true,
@@ -57,6 +75,8 @@ describe("receiveMessage", () => {
 		mockMessagesCreate.mockClear();
 		mockValidateRequest.mockClear();
 		mockValidateRequest.mockReturnValue(true);
+		mockGetExpectedTwilioSignature.mockClear();
+		mockGetExpectedTwilioSignature.mockReturnValue("expected-signature");
 	});
 
 	it("returns 204 when Three Rings rota export succeeds", async () => {
@@ -77,30 +97,27 @@ describe("receiveMessage", () => {
 			"Event Alert: Bike Over at 01/01/2024 10:32:30 for Device KS72RRV West/Swansea Tracer -276129403. Τo confirm theft call 0800 0496679";
 		const INCOMING_FROM = "+447896843243";
 
-		await supertest(getTestServer("receiveMessage"))
-			.post("/")
-			.send({
-				ToCountry: "GB",
-				ToState: "",
-				SmsMessageSid: SMS_MESSAGE_SID,
-				NumMedia: "0",
-				ToCity: "",
-				FromZip: "",
-				SmsSid: SMS_MESSAGE_SID,
-				FromState: "",
-				SmsStatus: "received",
-				FromCity: "",
-				Body: INCOMING_BODY,
-				FromCountry: "GB",
-				To: "+447700900999",
-				ToZip: "",
-				NumSegments: "2",
-				MessageSid: "SM_MOCK",
-				AccountSid: "AC_MOCK",
-				From: INCOMING_FROM,
-				ApiVersion: "2010-04-01",
-			})
-			.expect(204);
+		await postTwilioWebhook({
+			ToCountry: "GB",
+			ToState: "",
+			SmsMessageSid: SMS_MESSAGE_SID,
+			NumMedia: "0",
+			ToCity: "",
+			FromZip: "",
+			SmsSid: SMS_MESSAGE_SID,
+			FromState: "",
+			SmsStatus: "received",
+			FromCity: "",
+			Body: INCOMING_BODY,
+			FromCountry: "GB",
+			To: "+447700900999",
+			ToZip: "",
+			NumSegments: "2",
+			MessageSid: "SM_MOCK",
+			AccountSid: "AC_MOCK",
+			From: INCOMING_FROM,
+			ApiVersion: "2010-04-01",
+		}).expect(204);
 
 		expect(mockMessagesCreate).toHaveBeenCalledTimes(2);
 		expect(mockMessagesCreate).toHaveBeenNthCalledWith(1, {
@@ -144,15 +161,14 @@ describe("receiveMessage", () => {
 	it("returns 403 when the Twilio webhook signature is invalid", async () => {
 		mockValidateRequest.mockReturnValue(false);
 
-		await supertest(getTestServer("receiveMessage"))
-			.post("/")
-			.set("X-Twilio-Signature", "invalid-signature")
-			.send({
+		await postTwilioWebhook(
+			{
 				SmsMessageSid: SMS_MESSAGE_SID,
 				Body: "Event Alert",
 				From: "+447896843243",
-			})
-			.expect(403);
+			},
+			"invalid-signature",
+		).expect(403);
 
 		expect(mockMessagesCreate).not.toHaveBeenCalled();
 	});
@@ -195,30 +211,27 @@ describe("receiveMessage", () => {
 		const INCOMING_BODY = "Event Alert: repeat request";
 		const INCOMING_FROM = "+447896843243";
 
-		await supertest(getTestServer("receiveMessage"))
-			.post("/")
-			.send({
-				ToCountry: "GB",
-				ToState: "",
-				SmsMessageSid: SMS_MESSAGE_SID,
-				NumMedia: "0",
-				ToCity: "",
-				FromZip: "",
-				SmsSid: SMS_MESSAGE_SID,
-				FromState: "",
-				SmsStatus: "received",
-				FromCity: "",
-				Body: INCOMING_BODY,
-				FromCountry: "GB",
-				To: "+447700900999",
-				ToZip: "",
-				NumSegments: "2",
-				MessageSid: "SM_MOCK",
-				AccountSid: "AC_MOCK",
-				From: INCOMING_FROM,
-				ApiVersion: "2010-04-01",
-			})
-			.expect(204);
+		await postTwilioWebhook({
+			ToCountry: "GB",
+			ToState: "",
+			SmsMessageSid: SMS_MESSAGE_SID,
+			NumMedia: "0",
+			ToCity: "",
+			FromZip: "",
+			SmsSid: SMS_MESSAGE_SID,
+			FromState: "",
+			SmsStatus: "received",
+			FromCity: "",
+			Body: INCOMING_BODY,
+			FromCountry: "GB",
+			To: "+447700900999",
+			ToZip: "",
+			NumSegments: "2",
+			MessageSid: "SM_MOCK",
+			AccountSid: "AC_MOCK",
+			From: INCOMING_FROM,
+			ApiVersion: "2010-04-01",
+		}).expect(204);
 
 		// Three Rings API should not have been called.
 		expect(nock.pendingMocks()).toHaveLength(0);
