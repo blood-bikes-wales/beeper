@@ -1,6 +1,6 @@
-import type { Request } from "@google-cloud/functions-framework";
 import { timingSafeEqual } from "node:crypto";
 import querystring from "node:querystring";
+import type { Request } from "@google-cloud/functions-framework";
 import twilio from "twilio";
 import Config from "./config";
 

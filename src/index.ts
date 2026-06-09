@@ -23,8 +23,8 @@ const receiveMessage = async (req: Request, res: Response) => {
 		Config.getTwilioAuthToken(),
 	);
 
-	const logService = new MessageLogService();
-	const requestKey = await logService.logIncomingRequest(body);
+	const messageLogService = new MessageLogService();
+	const requestKey = await messageLogService.logIncomingRequest(body);
 
 	const threeRings = new ThreeRingsService(
 		new ThreeRingsCachingRepository(new ThreeRingsHttpRepository()),
@@ -64,7 +64,7 @@ const receiveMessage = async (req: Request, res: Response) => {
 			from: body.From,
 			to: phoneNumber,
 		});
-		await logService.logOutgoingMessage(
+		await messageLogService.logOutgoingMessage(
 			requestKey,
 			phoneNumber,
 			body.From,

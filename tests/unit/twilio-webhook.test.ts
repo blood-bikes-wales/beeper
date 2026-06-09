@@ -28,8 +28,7 @@ describe("isValidTwilioWebhook", () => {
 		const req = {
 			get(name: string) {
 				if (name === "x-twilio-signature") return signature;
-				if (name === "content-type")
-					return "application/x-www-form-urlencoded";
+				if (name === "content-type") return "application/x-www-form-urlencoded";
 				return undefined;
 			},
 			body: params,
@@ -55,8 +54,7 @@ describe("isValidTwilioWebhook", () => {
 		const req = {
 			get(name: string) {
 				if (name === "x-twilio-signature") return "invalid-signature";
-				if (name === "content-type")
-					return "application/x-www-form-urlencoded";
+				if (name === "content-type") return "application/x-www-form-urlencoded";
 				return undefined;
 			},
 			body: params,

@@ -27,8 +27,9 @@ jest.mock("twilio", () => {
 			create: mockMessagesCreate,
 		},
 	}));
-	(twilioFn as { validateRequest: typeof mockValidateRequest }).validateRequest =
-		mockValidateRequest;
+	(
+		twilioFn as { validateRequest: typeof mockValidateRequest }
+	).validateRequest = mockValidateRequest;
 	return {
 		__esModule: true,
 		default: twilioFn,

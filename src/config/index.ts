@@ -8,6 +8,10 @@ function required(name: string): string {
 	return value;
 }
 
+function optionalEnv(name: string): string | undefined {
+	return process.env[name];
+}
+
 // biome-ignore lint/complexity/noStaticOnlyClass: <we dont need an instance for "config">
 export default class Config {
 	static getTwilioAccountSid(): string {
@@ -32,9 +36,9 @@ export default class Config {
 
 	static resolveGcpProjectId(): string {
 		const projectId =
-			process.env["GOOGLE_CLOUD_PROJECT"] ??
-			process.env["DATASTORE_PROJECT_ID"] ??
-			process.env["GCP_PROJECT_ID"];
+			optionalEnv("GOOGLE_CLOUD_PROJECT") ??
+			optionalEnv("DATASTORE_PROJECT_ID") ??
+			optionalEnv("GCP_PROJECT_ID");
 
 		if (!projectId) {
 			throw new Error(
