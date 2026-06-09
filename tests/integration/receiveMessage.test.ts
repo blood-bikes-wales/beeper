@@ -19,15 +19,21 @@ const datastoreKeysToClean = [
 
 // Variables prefixed with "mock" are hoisted by ts-jest alongside jest.mock() factories.
 const mockMessagesCreate = jest.fn().mockResolvedValue({ sid: "SM_mock" });
+const mockValidateRequest = jest.fn().mockReturnValue(true);
 
-jest.mock("twilio", () => ({
-	__esModule: true,
-	default: jest.fn(() => ({
+jest.mock("twilio", () => {
+	const twilioFn = jest.fn(() => ({
 		messages: {
 			create: mockMessagesCreate,
 		},
-	})),
-}));
+	}));
+	(twilioFn as { validateRequest: typeof mockValidateRequest }).validateRequest =
+		mockValidateRequest;
+	return {
+		__esModule: true,
+		default: twilioFn,
+	};
+});
 
 jest.mock("../../src/utility", () => ({
 	__esModule: true,
@@ -48,6 +54,8 @@ describe("receiveMessage", () => {
 	afterEach(() => {
 		nock.cleanAll();
 		mockMessagesCreate.mockClear();
+		mockValidateRequest.mockClear();
+		mockValidateRequest.mockReturnValue(true);
 	});
 
 	it("returns 204 when Three Rings rota export succeeds", async () => {
@@ -130,6 +138,22 @@ describe("receiveMessage", () => {
 			datastore.key(["ThreeRingsCache", "volunteer-108235"]),
 		);
 		expect(trusteeCache).toBeDefined();
+	});
+
+	it("returns 403 when the Twilio webhook signature is invalid", async () => {
+		mockValidateRequest.mockReturnValue(false);
+
+		await supertest(getTestServer("receiveMessage"))
+			.post("/")
+			.set("X-Twilio-Signature", "invalid-signature")
+			.send({
+				SmsMessageSid: SMS_MESSAGE_SID,
+				Body: "Event Alert",
+				From: "+447896843243",
+			})
+			.expect(403);
+
+		expect(mockMessagesCreate).not.toHaveBeenCalled();
 	});
 
 	it("uses cached Three Rings data on a repeat request", async () => {

@@ -18,6 +18,10 @@ export default class Config {
 		return required("TWILIO_AUTH_TOKEN");
 	}
 
+	static getTwilioWebhookUrl(): string {
+		return required("TWILIO_WEBHOOK_URL");
+	}
+
 	static getThreeRingsApiKey(): string {
 		return required("THREE_RINGS_API_KEY");
 	}
