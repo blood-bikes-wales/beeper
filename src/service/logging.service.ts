@@ -1,6 +1,7 @@
 import pino, { type Logger, type LoggerOptions } from "pino";
 
 const APP_NAME = "Beeper";
+const logDestination = pino.destination({ dest: 1, sync: false });
 
 const baseOptions: LoggerOptions = {
 	mixin() {
@@ -8,14 +9,14 @@ const baseOptions: LoggerOptions = {
 	},
 };
 
-const baseLogger = pino(baseOptions);
+const baseLogger = pino(baseOptions, logDestination);
 
 export function createLogger(options?: LoggerOptions): Logger {
 	if (!options) {
 		return baseLogger;
 	}
 
-	return pino({ ...baseOptions, ...options });
+	return pino({ ...baseOptions, ...options }, logDestination);
 }
 
 export function createRequestLogger(currentDateTime: string): Logger {
