@@ -154,7 +154,7 @@ describe("ThreeRingsService.getVolunteerForShift", () => {
 				RotaType.CONTROLLER,
 			),
 		).toThrow(
-			`More than one 'Controller' shift found for the current date: 2024-01-01T11:00:00.000Z`,
+			`We did not get exactly one 'Controller' shift found for the current date: 2024-01-01T11:00:00.000Z, recieved: 0`,
 		);
 	});
 
@@ -167,7 +167,9 @@ describe("ThreeRingsService.getVolunteerForShift", () => {
 				"2024-01-01T09:30:00.000Z",
 				RotaType.DUTY_TRUSTEE,
 			),
-		).toThrow(`More than one 'Duty Trustee' shift found for the current date`);
+		).toThrow(
+			`We did not get exactly one 'Duty Trustee' shift found for the current date: 2024-01-01T09:30:00.000Z, recieved: 0`,
+		);
 	});
 
 	it("throws when more than one shift matches", () => {
@@ -179,7 +181,9 @@ describe("ThreeRingsService.getVolunteerForShift", () => {
 				"2024-01-01T09:30:00.000Z",
 				RotaType.CONTROLLER,
 			),
-		).toThrow(`More than one 'Controller' shift found for the current date`);
+		).toThrow(
+			`We did not get exactly one 'Controller' shift found for the current date: 2024-01-01T09:30:00.000Z, recieved: 2`,
+		);
 	});
 
 	it("throws when the matching shift has no volunteers", () => {

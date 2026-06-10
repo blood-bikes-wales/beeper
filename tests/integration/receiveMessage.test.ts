@@ -54,12 +54,20 @@ function postTwilioWebhook(
 		.send(body);
 }
 
-jest.mock("../../src/utility", () => ({
-	__esModule: true,
-	default: {
-		getCurrentDate: jest.fn(() => MOCK_CURRENT_DATE),
-	},
-}));
+jest.mock("../../src/utility", () => {
+	const actual = jest.requireActual(
+		"../../src/utility",
+	) as typeof import("../../src/utility");
+	const { redactPhoneNumber } = actual.default;
+
+	return {
+		__esModule: true,
+		default: {
+			getCurrentDate: jest.fn(() => MOCK_CURRENT_DATE),
+			redactPhoneNumber,
+		},
+	};
+});
 
 describe("receiveMessage", () => {
 	beforeAll(() => {
