@@ -62,7 +62,7 @@ export class ThreeRingsService {
 
 		if (matching.length !== 1) {
 			throw new Error(
-				`More than one '${rotaType}' shift found for the current date: ${currentDateTime}`,
+				`We did not get exactly one '${rotaType}' shift found for the current date: ${currentDateTime}, recieved: ${matching.length}`,
 			);
 		}
 
