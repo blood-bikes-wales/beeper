@@ -58,11 +58,13 @@ jest.mock("../../src/utility", () => {
 	const actual = jest.requireActual(
 		"../../src/utility",
 	) as typeof import("../../src/utility");
+	const { redactPhoneNumber } = actual.default;
+
 	return {
 		__esModule: true,
 		default: {
-			...actual.default,
 			getCurrentDate: jest.fn(() => MOCK_CURRENT_DATE),
+			redactPhoneNumber,
 		},
 	};
 });
