@@ -58,7 +58,7 @@ describe("ThreeRingsService.getVolunteerProperty", () => {
 			VolunteerPropertyType.TELEPHONE,
 		);
 
-		expect(result).toBe("07700900999");
+		expect(result).toBe("+447700900999");
 	});
 
 	it("returns the correct property when the volunteer has multiple property types", () => {
@@ -73,7 +73,7 @@ describe("ThreeRingsService.getVolunteerProperty", () => {
 			VolunteerPropertyType.TELEPHONE,
 		);
 
-		expect(result).toBe("07700900999");
+		expect(result).toBe("+447700900999");
 	});
 
 	it("throws when the requested property type is not present", () => {

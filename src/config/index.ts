@@ -48,4 +48,12 @@ export default class Config {
 
 		return projectId;
 	}
+
+	static resolveDatastoreDatabaseId(): string | undefined {
+		if (optionalEnv("DATASTORE_EMULATOR_HOST")) {
+			return undefined;
+		}
+
+		return optionalEnv("DATASTORE_DATABASE_ID") ?? "beeper-database";
+	}
 }

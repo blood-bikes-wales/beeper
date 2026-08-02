@@ -74,7 +74,7 @@ const receiveMessage = async (req: Request, res: Response) => {
 	for (const phoneNumber of [controllerPhoneNumber, dutyTrusteePhoneNumber]) {
 		await client.messages.create({
 			body: body.Body,
-			from: body.From,
+			from: "BBWales",
 			to: phoneNumber,
 		});
 		log.info(

@@ -1,17 +1,30 @@
 import { DateTime, Interval } from "luxon";
 import type { IThreeRingsRepository } from "../repository/IThreeRingsRepository";
-import type {
-	RotaType,
-	Shift,
-	VolunteerProperty,
+import {
+	type RotaType,
+	type Shift,
+	type VolunteerProperty,
 	VolunteerPropertyType,
-	VolunteerResponseType,
-	VolunteerType,
+	type VolunteerResponseType,
+	type VolunteerType,
 } from "../types";
 import type { Volunteer } from "../types/RotaResponse.type";
+import Utility from "../utility";
 
 export class ThreeRingsService {
 	constructor(private readonly repository: IThreeRingsRepository) {}
+
+	private validateProperty(
+		propertyType: VolunteerPropertyType,
+		value: string,
+	): string {
+		switch (propertyType) {
+			case VolunteerPropertyType.TELEPHONE:
+				return Utility.formatPhoneNumber(value);
+			default:
+				return value;
+		}
+	}
 
 	async getRotaExportForDay(date: string) {
 		return this.repository.getRotaExportForDay(date);
@@ -39,7 +52,7 @@ export class ThreeRingsService {
 			);
 		}
 
-		return property.value;
+		return this.validateProperty(propertyType, property.value);
 	}
 
 	getVolunteerForShift(

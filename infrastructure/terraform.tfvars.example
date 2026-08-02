@@ -1,2 +1,6 @@
-project_id      = "your-gcp-project-id"
-billing_account = "XXXXXX-XXXXXX-XXXXXX"
+project_id = "your-gcp-project-id"
+
+three_rings_api_key = "your-three-rings-api-key"
+twilio_account_sid  = "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+twilio_auth_token   = "your-twilio-auth-token"
+twilio_webhook_url  = "https://your-region-your-project.cloudfunctions.net/beeper"

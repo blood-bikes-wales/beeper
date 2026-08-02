@@ -9,11 +9,6 @@ variable "three_rings_api_key" {
   sensitive   = true
 }
 
-variable "billing_account" {
-  description = "GCP billing account ID (e.g. XXXXXX-XXXXXX-XXXXXX)"
-  type        = string
-}
-
 variable "twilio_account_sid" {
   description = "Twilio account SID, injected into the Cloud Function via Secret Manager"
   type        = string
@@ -24,4 +19,9 @@ variable "twilio_auth_token" {
   description = "Twilio auth token, injected into the Cloud Function via Secret Manager"
   type        = string
   sensitive   = true
+}
+
+variable "twilio_webhook_url" {
+  description = "Full Twilio webhook URL for request signature validation"
+  type        = string
 }

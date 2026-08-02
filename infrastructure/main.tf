@@ -8,17 +8,19 @@ terraform {
 }
 
 provider "google" {
-  project = var.project_id
-  region  = "europe-west2"
-  zone    = "europe-west2-a"
+  project               = var.project_id
+  billing_project       = var.project_id
+  user_project_override = true
+  region                = "europe-west2"
+  zone                  = "europe-west2-a"
 }
 
+# Enables APIs on an existing project (does not create the project).
 module "project-services" {
-  source          = "terraform-google-modules/project-factory/google"
-  version         = "~> 18.2"
-  project_id      = var.project_id
-  name            = "beeper"
-  billing_account = var.billing_account
+  source  = "terraform-google-modules/project-factory/google//modules/project_services"
+  version = "~> 18.2"
+
+  project_id = var.project_id
 
   activate_apis = [
     "artifactregistry.googleapis.com",
@@ -27,14 +29,15 @@ module "project-services" {
     "run.googleapis.com",
     "storage.googleapis.com",
     "datastore.googleapis.com",
-    "secretmanager.googleapis.com"
+    "secretmanager.googleapis.com",
+    "firestore.googleapis.com"
   ]
 
-  disable_services_on_destroy = true
+  disable_services_on_destroy = false
 }
 
 resource "google_storage_bucket" "bucket" {
-  name     = "beeper-bucket"
+  name     = "beeper-${var.project_id}"
   location = "europe-west2"
 }
 
@@ -138,7 +141,9 @@ resource "google_cloudfunctions2_function" "beeper_function" {
     google_storage_bucket_iam_member.source_compute_reader,
     google_storage_bucket_iam_member.source_cloudbuild_reader,
     google_project_iam_member.compute_cloudfunctions_developer,
+    google_project_iam_member.compute_datastore_user,
     google_project_iam_member.compute_secret_accessor,
+    google_firestore_database.database,
     google_secret_manager_secret_version.three_rings_api_key,
     google_secret_manager_secret_version.twilio_account_sid,
     google_secret_manager_secret_version.twilio_auth_token,
@@ -153,17 +158,24 @@ resource "google_cloudfunctions2_function" "beeper_function" {
     entry_point = "receiveMessage"
     source {
       storage_source {
-        bucket = google_storage_bucket.bucket.name
-        object = google_storage_bucket_object.object.name
+        bucket     = google_storage_bucket.bucket.name
+        object     = google_storage_bucket_object.object.name
+        generation = google_storage_bucket_object.object.generation
       }
     }
   }
 
   service_config {
-    available_memory   = "128Mi"
+    available_memory   = "256Mi"
     timeout_seconds    = 10
     max_instance_count = 1
     min_instance_count = 0
+
+    environment_variables = {
+      GCP_PROJECT_ID        = var.project_id
+      DATASTORE_DATABASE_ID = google_firestore_database.database.name
+      TWILIO_WEBHOOK_URL    = var.twilio_webhook_url
+    }
 
     secret_environment_variables {
       key        = "THREE_RINGS_API_KEY"
