@@ -58,13 +58,14 @@ jest.mock("../../src/utility", () => {
 	const actual = jest.requireActual(
 		"../../src/utility",
 	) as typeof import("../../src/utility");
-	const { redactPhoneNumber } = actual.default;
+	const { redactPhoneNumber, formatPhoneNumber } = actual.default;
 
 	return {
 		__esModule: true,
 		default: {
 			getCurrentDate: jest.fn(() => MOCK_CURRENT_DATE),
 			redactPhoneNumber,
+			formatPhoneNumber,
 		},
 	};
 });
@@ -130,13 +131,13 @@ describe("receiveMessage", () => {
 		expect(mockMessagesCreate).toHaveBeenCalledTimes(2);
 		expect(mockMessagesCreate).toHaveBeenNthCalledWith(1, {
 			body: INCOMING_BODY,
-			from: INCOMING_FROM,
-			to: "07700900999", // controller (fixture: directory-search-180262)
+			from: "BBWales",
+			to: "+447700900999", // controller (fixture: directory-search-180262)
 		});
 		expect(mockMessagesCreate).toHaveBeenNthCalledWith(2, {
 			body: INCOMING_BODY,
-			from: INCOMING_FROM,
-			to: "07700900989", // duty trustee (fixture: directory-search-108235)
+			from: "BBWales",
+			to: "+447700900989", // duty trustee (fixture: directory-search-108235)
 		});
 
 		// Verify the incoming request was logged to Datastore.

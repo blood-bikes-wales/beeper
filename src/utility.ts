@@ -10,4 +10,11 @@ export default class Utility {
 		const digits = phoneNumber.replace(/\D/g, "");
 		return `****${digits.slice(-4)}`;
 	}
+
+	static formatPhoneNumber(phoneNumber: string): string {
+		if (phoneNumber.startsWith("07")) {
+			return `+44${phoneNumber.slice(1)}`;
+		}
+		return phoneNumber;
+	}
 }
