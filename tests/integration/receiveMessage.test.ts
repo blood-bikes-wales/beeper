@@ -7,12 +7,13 @@ import controllerDirectoryFixture from "../fixtures/directory-search-180262-expo
 import rotaFixture from "../fixtures/rota-export.json";
 
 const MOCK_CURRENT_DATE = "2024-01-01T10:30:53.697Z";
+const MOCK_ROTA_DAY = "2024-01-01";
 const SMS_MESSAGE_SID = "SM7068ddb127c539915189_test";
 
 // Datastore keys touched during each test run.
 const datastoreKeysToClean = [
 	datastore.key(["IncomingRequest", SMS_MESSAGE_SID]),
-	datastore.key(["ThreeRingsCache", `rota-${MOCK_CURRENT_DATE}`]),
+	datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
 	datastore.key(["ThreeRingsCache", "volunteer-180262"]),
 	datastore.key(["ThreeRingsCache", "volunteer-108235"]),
 ];
@@ -91,7 +92,7 @@ describe("receiveMessage", () => {
 	it("returns 204 when Three Rings rota export succeeds", async () => {
 		nock("https://www.3r.org.uk")
 			.get("/stats/export_rotas.json")
-			.query({ start_date: MOCK_CURRENT_DATE, end_date: MOCK_CURRENT_DATE })
+			.query({ start_date: MOCK_ROTA_DAY, end_date: MOCK_ROTA_DAY })
 			.reply(200, rotaFixture);
 
 		nock("https://www.3r.org.uk")
@@ -152,7 +153,7 @@ describe("receiveMessage", () => {
 
 		// Verify Three Rings responses were cached.
 		const [rotaCache] = await datastore.get(
-			datastore.key(["ThreeRingsCache", `rota-${MOCK_CURRENT_DATE}`]),
+			datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
 		);
 		expect(rotaCache).toBeDefined();
 
@@ -186,7 +187,7 @@ describe("receiveMessage", () => {
 		// Pre-populate the cache so no HTTP calls to Three Rings are needed.
 		await datastore.save([
 			{
-				key: datastore.key(["ThreeRingsCache", `rota-${MOCK_CURRENT_DATE}`]),
+				key: datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
 				data: [
 					{
 						name: "data",
