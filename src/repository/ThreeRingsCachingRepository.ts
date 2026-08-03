@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import { datastore } from "../datastore";
 import type { RotaResponseType, VolunteerResponseType } from "../types";
 import type { IThreeRingsRepository } from "./IThreeRingsRepository";
@@ -6,8 +7,9 @@ export class ThreeRingsCachingRepository implements IThreeRingsRepository {
 	constructor(private readonly inner: IThreeRingsRepository) {}
 
 	async getRotaExportForDay(date: string): Promise<RotaResponseType> {
-		return this.cached(`rota-${date}`, () =>
-			this.inner.getRotaExportForDay(date),
+		const day = DateTime.fromISO(date).toISODate() ?? date;
+		return this.cached(`rota-${day}`, () =>
+			this.inner.getRotaExportForDay(day),
 		);
 	}
 
