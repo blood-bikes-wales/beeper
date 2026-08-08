@@ -112,3 +112,16 @@ jobs:
           TWILIO_AUTH_TOKEN: sm-auth-token
           DATASTORE_EMULATOR_HOST: localhost:8081
           DATASTORE_PROJECT_ID: beeper-local
+
+  deploy-staging:
+    needs: [lint, terraform-lint, unit-tests, integration-tests]
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      project_id: plasma-staging-502110
+      backend_config: backends/staging.gcs.tfbackend
+    secrets: inherit

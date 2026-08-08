@@ -56,4 +56,8 @@ export default class Config {
 
 		return optionalEnv("DATASTORE_DATABASE_ID") ?? "beeper-database";
 	}
+
+	static getEnableControllerAlerts(): boolean {
+		return optionalEnv("ENABLE_CONTROLLER_ALERTS") === "true";
+	}
 }

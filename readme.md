@@ -142,10 +142,10 @@ Beeper is deployed to Google Cloud using Terraform. The Cloud Function lives in 
 
 Environments:
 
-| Environment | GCP project | State prefix |
-|-------------|-------------|--------------|
-| Production | `plasma-production` | `envs/production` |
-| Staging | `plasma-staging` | `envs/staging` |
+| Environment | GCP project | State prefix | Deploy trigger |
+|-------------|-------------|--------------|----------------|
+| Production | `plasma-production` | `envs/production` | Push to `main` |
+| Staging | `plasma-staging-502110` | `envs/staging` | PR to `main`, after CI checks pass |
 
 Terraform state is stored centrally in GCS (`gs://beeper-terraform-state`) with a separate prefix per environment.
 
@@ -182,7 +182,7 @@ Create the shared state bucket once (it is not managed by the app Terraform stac
 ./infrastructure/scripts/bootstrap-state-bucket.sh
 ```
 
-Grant humans and the GitHub deploy service account `roles/storage.objectAdmin` on `gs://beeper-terraform-state`.
+Grant humans and the GitHub deploy service accounts `roles/storage.objectAdmin` on `gs://beeper-terraform-state`.
 
 Migrate an existing local production state file:
 
@@ -191,13 +191,21 @@ cd infrastructure
 terraform init -migrate-state -force-copy -backend-config=backends/production.gcs.tfbackend
 ```
 
-For a fresh staging stack:
+For a fresh staging stack (requires billing enabled on `plasma-staging-502110`):
 
 ```bash
+npm run package:deploy
 cd infrastructure
 terraform init -reconfigure -backend-config=backends/staging.gcs.tfbackend
-# set TF_VAR_* or use a gitignored terraform.tfvars with project_id=plasma-staging
+# set TF_VAR_* or use a gitignored terraform.tfvars with project_id=plasma-staging-502110
 terraform apply
+terraform apply
+```
+
+Then set `TWILIO_WEBHOOK_URL` in the GitHub `staging` environment to the staging function URI from:
+
+```bash
+gcloud functions describe beeper --project=plasma-staging-502110 --region=europe-west2 --gen2 --format='value(serviceConfig.uri)'
 ```
 
 ### Manual deploy
@@ -213,30 +221,30 @@ terraform apply
 terraform apply
 ```
 
-Use `backends/staging.gcs.tfbackend` and `project_id=plasma-staging` for staging.
+Use `backends/staging.gcs.tfbackend` and `project_id=plasma-staging-502110` for staging.
 
 `npm run package:deploy` compiles TypeScript to `dist/` and creates `dist.zip`. Terraform uploads that file via `google_storage_bucket_object` and updates the Cloud Function when the source generation changes.
 
-### CI deploy (production)
+### CI deploy
 
-On every push to `main`, [`.github/workflows/deploy-production.yml`](.github/workflows/deploy-production.yml):
+Shared deploy logic lives in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) (reusable workflow).
 
-1. Builds `dist.zip` via `npm run package:deploy`
-2. Authenticates to GCP with Workload Identity Federation
-3. Runs `terraform apply` twice against the production backend (zip upload, then function redeploy)
+**Production** — on every push to `main`, [`.github/workflows/deploy-production.yml`](.github/workflows/deploy-production.yml) calls the reusable workflow against `plasma-production`.
 
-Configure a GitHub **Environment** named `production` with these secrets:
+**Staging** — on pull requests to `main`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint, terraform fmt, unit, and integration tests, then calls the reusable workflow against `plasma-staging-502110` only if those jobs succeed. Concurrent PRs share one staging stack (last successful deploy wins).
+
+Configure GitHub **Environments** `production` and `staging` with:
 
 | Secret | Purpose |
 |--------|---------|
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Provider resource name |
-| `GCP_SERVICE_ACCOUNT` | Deploy service account email in `plasma-production` |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Provider (same for both; pool lives in `plasma-production`) |
+| `GCP_SERVICE_ACCOUNT` | Deploy SA email for that environment’s GCP project |
 | `THREE_RINGS_API_KEY` | Three Rings API key |
 | `TWILIO_ACCOUNT_SID` | Twilio account SID |
 | `TWILIO_AUTH_TOKEN` | Twilio auth token |
-| `TWILIO_WEBHOOK_URL` | Production webhook URL for signature validation |
+| `TWILIO_WEBHOOK_URL` | Environment webhook URL for signature validation |
 
-The deploy service account needs permission to manage the production stack and `roles/storage.objectAdmin` on `gs://beeper-terraform-state`.
+Each deploy SA needs permission to manage its project stack and `roles/storage.objectAdmin` on `gs://beeper-terraform-state`.
 
 Store sensitive Terraform variables in GitHub Actions secrets (or local gitignored `terraform.tfvars`), never commit them.
 
