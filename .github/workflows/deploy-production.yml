@@ -1,0 +1,67 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Cache node_modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Package function
+        run: npm run package:deploy
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Terraform init
+        working-directory: infrastructure
+        run: terraform init -input=false -backend-config=backends/production.gcs.tfbackend
+
+      - name: Terraform apply (upload source)
+        working-directory: infrastructure
+        run: terraform apply -input=false -auto-approve
+        env:
+          TF_VAR_project_id: plasma-production
+          TF_VAR_three_rings_api_key: ${{ secrets.THREE_RINGS_API_KEY }}
+          TF_VAR_twilio_account_sid: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TF_VAR_twilio_auth_token: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TF_VAR_twilio_webhook_url: ${{ secrets.TWILIO_WEBHOOK_URL }}
+
+      # Cloud Function pins storage object generation; a second apply picks up the new zip.
+      - name: Terraform apply (redeploy function)
+        working-directory: infrastructure
+        run: terraform apply -input=false -auto-approve
+        env:
+          TF_VAR_project_id: plasma-production
+          TF_VAR_three_rings_api_key: ${{ secrets.THREE_RINGS_API_KEY }}
+          TF_VAR_twilio_account_sid: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TF_VAR_twilio_auth_token: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TF_VAR_twilio_webhook_url: ${{ secrets.TWILIO_WEBHOOK_URL }}
