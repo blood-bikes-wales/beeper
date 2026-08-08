@@ -198,7 +198,7 @@ npm run package:deploy
 cd infrastructure
 terraform init -reconfigure -backend-config=backends/staging.gcs.tfbackend
 # set TF_VAR_* or use a gitignored terraform.tfvars with project_id=plasma-staging-502110
-terraform apply
+terraform apply -target=google_storage_bucket_object.object
 terraform apply
 ```
 
@@ -216,8 +216,8 @@ npm run package:deploy
 
 cd infrastructure
 terraform init -backend-config=backends/production.gcs.tfbackend
-terraform apply
-# Second apply updates the Cloud Function to the new zip object generation
+# Upload zip first so generation is known, then update the function
+terraform apply -target=google_storage_bucket_object.object
 terraform apply
 ```
 

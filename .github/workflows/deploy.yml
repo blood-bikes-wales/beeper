@@ -57,9 +57,9 @@ jobs:
         working-directory: infrastructure
         run: terraform init -input=false -backend-config=${{ inputs.backend_config }}
 
-      - name: Terraform apply (upload source)
+      - name: Terraform apply (upload source zip)
         working-directory: infrastructure
-        run: terraform apply -input=false -auto-approve
+        run: terraform apply -input=false -auto-approve -target=google_storage_bucket_object.object
         env:
           TF_VAR_project_id: ${{ inputs.project_id }}
           TF_VAR_three_rings_api_key: ${{ secrets.THREE_RINGS_API_KEY }}
@@ -67,7 +67,8 @@ jobs:
           TF_VAR_twilio_auth_token: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TF_VAR_twilio_webhook_url: ${{ secrets.TWILIO_WEBHOOK_URL }}
 
-      # Cloud Function pins storage object generation; a second apply picks up the new zip.
+      # Separate apply so the function plans against the known zip generation
+      # (same-apply zip+function updates hit "inconsistent final plan" on generation).
       - name: Terraform apply (redeploy function)
         working-directory: infrastructure
         run: terraform apply -input=false -auto-approve
