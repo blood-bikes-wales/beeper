@@ -71,7 +71,7 @@ const receiveMessage = async (req: Request, res: Response) => {
 		VolunteerPropertyType.TELEPHONE,
 	);
 
-	// temp: only send to controller conditionally for now, 
+	// temp: only send to controller conditionally for now,
 	const phoneNumbers = Config.getEnableControllerAlerts()
 		? [controllerPhoneNumber, dutyTrusteePhoneNumber]
 		: [dutyTrusteePhoneNumber];
