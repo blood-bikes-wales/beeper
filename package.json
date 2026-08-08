@@ -8,6 +8,7 @@
 	"main": "dist/index.js",
 	"scripts": {
 		"build": "tsc",
+		"gcp-build": "echo 'Using prebuilt dist/'",
 		"watch": "tsc --watch",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check .",

@@ -140,6 +140,15 @@ npm run typecheck  # type-check without emitting
 
 Beeper is deployed to Google Cloud using Terraform. The Cloud Function lives in the same Terraform stack as the rest of the infrastructure (GCS bucket, Secret Manager, IAM, Datastore).
 
+Environments:
+
+| Environment | GCP project | State prefix | Deploy trigger |
+|-------------|-------------|--------------|----------------|
+| Production | `plasma-production` | `envs/production` | Push to `main` |
+| Staging | `plasma-staging-502110` | `envs/staging` | PR to `main`, after CI checks pass |
+
+Terraform state is stored centrally in GCS (`gs://beeper-terraform-state`) with a separate prefix per environment.
+
 ### Architecture
 
 ```mermaid
@@ -151,7 +160,7 @@ flowchart LR
 
 Terraform owns:
 
-- GCP project and APIs
+- GCP project APIs
 - GCS source bucket
 - Secret Manager secrets
 - Cloud Function (Gen2)
@@ -163,7 +172,41 @@ CI (or local deploy) owns:
 - Building and zipping the Node app
 - Running `terraform apply` to publish the artifact
 
-Terraform should not run `npm build`. Build the app first, then pass Terraform the resulting zip.
+Terraform should not run `npm build`. Build the app first, then pass Terraform the resulting zip. The package includes a no-op `gcp-build` script so Cloud Build uses the prebuilt `dist/`.
+
+### Bootstrap remote state (one-time)
+
+Create the shared state bucket once (it is not managed by the app Terraform stack):
+
+```bash
+./infrastructure/scripts/bootstrap-state-bucket.sh
+```
+
+Grant humans and the GitHub deploy service accounts `roles/storage.objectAdmin` on `gs://beeper-terraform-state`.
+
+Migrate an existing local production state file:
+
+```bash
+cd infrastructure
+terraform init -migrate-state -force-copy -backend-config=backends/production.gcs.tfbackend
+```
+
+For a fresh staging stack (requires billing enabled on `plasma-staging-502110`):
+
+```bash
+npm run package:deploy
+cd infrastructure
+terraform init -reconfigure -backend-config=backends/staging.gcs.tfbackend
+# set TF_VAR_* or use a gitignored terraform.tfvars with project_id=plasma-staging-502110
+terraform apply
+terraform apply
+```
+
+Then set `TWILIO_WEBHOOK_URL` in the GitHub `staging` environment to the staging function URI from:
+
+```bash
+gcloud functions describe beeper --project=plasma-staging-502110 --region=europe-west2 --gen2 --format='value(serviceConfig.uri)'
+```
 
 ### Manual deploy
 
@@ -172,68 +215,38 @@ npm ci
 npm run package:deploy
 
 cd infrastructure
-terraform init
+terraform init -backend-config=backends/production.gcs.tfbackend
+terraform apply
+# Second apply updates the Cloud Function to the new zip object generation
 terraform apply
 ```
 
-`npm run package:deploy` compiles TypeScript to `dist/` and creates `dist.zip`. Terraform uploads that file via `google_storage_bucket_object` and updates the Cloud Function when the source changes.
+Use `backends/staging.gcs.tfbackend` and `project_id=plasma-staging-502110` for staging.
 
-### Recommended CI deploy workflow
+`npm run package:deploy` compiles TypeScript to `dist/` and creates `dist.zip`. Terraform uploads that file via `google_storage_bucket_object` and updates the Cloud Function when the source generation changes.
 
-CI currently lints Terraform and runs tests, but does not deploy. A deploy workflow on `main` should:
+### CI deploy
 
-1. Run unit and integration tests
-2. Run `npm run package:deploy`
-3. Run `terraform apply` with GCP credentials
+Shared deploy logic lives in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) (reusable workflow).
 
-Example shape:
+**Production** — on every push to `main`, [`.github/workflows/deploy-production.yml`](.github/workflows/deploy-production.yml) calls the reusable workflow against `plasma-production`.
 
-```yaml
-name: Deploy
+**Staging** — on pull requests to `main`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint, terraform fmt, unit, and integration tests, then calls the reusable workflow against `plasma-staging-502110` only if those jobs succeed. Concurrent PRs share one staging stack (last successful deploy wins).
 
-on:
-  push:
-    branches: [main]
+Configure GitHub **Environments** `production` and `staging` with:
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+| Secret | Purpose |
+|--------|---------|
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Provider (same for both; pool lives in `plasma-production`) |
+| `GCP_SERVICE_ACCOUNT` | Deploy SA email for that environment’s GCP project |
+| `THREE_RINGS_API_KEY` | Three Rings API key |
+| `TWILIO_ACCOUNT_SID` | Twilio account SID |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token |
+| `TWILIO_WEBHOOK_URL` | Environment webhook URL for signature validation |
 
-    steps:
-      - uses: actions/checkout@v4
+Each deploy SA needs permission to manage its project stack and `roles/storage.objectAdmin` on `gs://beeper-terraform-state`.
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - run: npm ci
-      - run: npm run test:unit
-      - run: npm run package:deploy
-
-      - uses: hashicorp/setup-terraform@v3
-
-      - uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Terraform apply
-        working-directory: infrastructure
-        run: |
-          terraform init
-          terraform apply -auto-approve
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT }}
-          TF_VAR_three_rings_api_key: ${{ secrets.THREE_RINGS_API_KEY }}
-          TF_VAR_twilio_account_sid: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TF_VAR_twilio_auth_token: ${{ secrets.TWILIO_AUTH_TOKEN }}
-```
-
-Store sensitive Terraform variables in GitHub Actions secrets rather than committing them to `terraform.tfvars`.
+Store sensitive Terraform variables in GitHub Actions secrets (or local gitignored `terraform.tfvars`), never commit them.
 
 ### Why keep deploy in Terraform
 

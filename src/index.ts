@@ -71,7 +71,12 @@ const receiveMessage = async (req: Request, res: Response) => {
 		VolunteerPropertyType.TELEPHONE,
 	);
 
-	for (const phoneNumber of [controllerPhoneNumber, dutyTrusteePhoneNumber]) {
+	// temp: only send to controller conditionally for now,
+	const phoneNumbers = Config.getEnableControllerAlerts()
+		? [controllerPhoneNumber, dutyTrusteePhoneNumber]
+		: [dutyTrusteePhoneNumber];
+
+	for (const phoneNumber of phoneNumbers) {
 		await client.messages.create({
 			body: body.Body,
 			from: "BBWales",

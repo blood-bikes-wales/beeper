@@ -129,16 +129,11 @@ describe("receiveMessage", () => {
 			ApiVersion: "2010-04-01",
 		}).expect(204);
 
-		expect(mockMessagesCreate).toHaveBeenCalledTimes(2);
-		expect(mockMessagesCreate).toHaveBeenNthCalledWith(1, {
+		expect(mockMessagesCreate).toHaveBeenCalledTimes(1);
+		expect(mockMessagesCreate).toHaveBeenCalledWith({
 			body: INCOMING_BODY,
 			from: "BBWales",
-			to: "+447700900999", // controller (fixture: directory-search-180262)
-		});
-		expect(mockMessagesCreate).toHaveBeenNthCalledWith(2, {
-			body: INCOMING_BODY,
-			from: "BBWales",
-			to: "+447700900989", // duty trustee (fixture: directory-search-108235)
+			to: "+447700900989", // duty trustee only (ENABLE_CONTROLLER_ALERTS unset)
 		});
 
 		// Verify the incoming request was logged to Datastore.
@@ -245,6 +240,6 @@ describe("receiveMessage", () => {
 
 		// Three Rings API should not have been called.
 		expect(nock.pendingMocks()).toHaveLength(0);
-		expect(mockMessagesCreate).toHaveBeenCalledTimes(2);
+		expect(mockMessagesCreate).toHaveBeenCalledTimes(1);
 	});
 });
