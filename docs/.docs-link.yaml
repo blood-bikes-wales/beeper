@@ -1,0 +1,56 @@
+cloudId: "https://bloodbikeswales.atlassian.net"
+spaceId: "~557058fdb7bd6307154e4b8ecf7e4efeeb4be7"
+projectName: "beeper"
+docsParentId: "12386307" # Software Documentation folder
+mcpServer: "user-Confluence communication server"
+
+folders:
+  ".":
+    pageId: "12451877"
+    title: "Beeper"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12451877/Beeper"
+  technical:
+    pageId: "12451893"
+    title: "Technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12451893/Technical"
+  non-technical:
+    pageId: "12320957"
+    title: "Non-technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12320957/Non-technical"
+
+pages:
+  README.md:
+    pageId: "12451911"
+    title: "Project documentation"
+    folder: "."
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12451911/Project+documentation"
+  technical/overview.md:
+    pageId: "12320977"
+    title: "Technical overview"
+    folder: "technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12320977/Technical+overview"
+  technical/architecture.md:
+    pageId: "12320991"
+    title: "Architecture"
+    folder: "technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12320991/Architecture"
+  technical/local-twilio-webhook.md:
+    pageId: "12288030"
+    title: "Local Twilio webhook testing"
+    folder: "technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12288030/Local+Twilio+webhook+testing"
+  technical/staging-first-apply-blocker.md:
+    pageId: "12451928"
+    title: "Staging first-apply blocker"
+    folder: "technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12451928/Staging+first-apply+blocker"
+  non-technical/overview.md:
+    pageId: "12321011"
+    title: "Non-technical overview"
+    folder: "non-technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12321011/Non-technical+overview"
+  non-technical/glossary.md:
+    pageId: "12386378"
+    title: "Glossary"
+    folder: "non-technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12386378/Glossary"
