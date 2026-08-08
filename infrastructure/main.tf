@@ -172,9 +172,9 @@ resource "google_cloudfunctions2_function" "beeper_function" {
     min_instance_count = 0
 
     environment_variables = {
-      GCP_PROJECT_ID        = var.project_id
-      DATASTORE_DATABASE_ID = google_firestore_database.database.name
-      TWILIO_WEBHOOK_URL    = var.twilio_webhook_url
+      GCP_PROJECT_ID           = var.project_id
+      DATASTORE_DATABASE_ID    = google_firestore_database.database.name
+      TWILIO_WEBHOOK_URL       = var.twilio_webhook_url
       ENABLE_CONTROLLER_ALERTS = false
     }
 
