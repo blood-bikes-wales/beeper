@@ -30,7 +30,8 @@ module "project-services" {
     "storage.googleapis.com",
     "datastore.googleapis.com",
     "secretmanager.googleapis.com",
-    "firestore.googleapis.com"
+    "firestore.googleapis.com",
+    "logging.googleapis.com"
   ]
 
   disable_services_on_destroy = false
@@ -215,4 +216,44 @@ resource "google_firestore_database" "database" {
   name        = "beeper-database"
   location_id = "europe-west2"
   type        = "DATASTORE_MODE"
+}
+
+# Delete entities after expiresAt (Three Rings cache: 24h; message logs: 28 days).
+resource "google_firestore_field" "three_rings_cache_ttl" {
+  project    = var.project_id
+  database   = google_firestore_database.database.name
+  collection = "ThreeRingsCache"
+  field      = "expiresAt"
+
+  ttl_config {}
+}
+
+resource "google_firestore_field" "incoming_request_ttl" {
+  project    = var.project_id
+  database   = google_firestore_database.database.name
+  collection = "IncomingRequest"
+  field      = "expiresAt"
+
+  ttl_config {}
+}
+
+resource "google_firestore_field" "outgoing_message_ttl" {
+  project    = var.project_id
+  database   = google_firestore_database.database.name
+  collection = "OutgoingMessage"
+  field      = "expiresAt"
+
+  ttl_config {}
+}
+
+# Cloud Function (Gen2 / Cloud Run) stdout goes to the project's _Default log bucket.
+# Align retention with Datastore IncomingRequest / OutgoingMessage (28 days).
+resource "google_logging_project_bucket_config" "default" {
+  project        = var.project_id
+  location       = "global"
+  bucket_id      = "_Default"
+  retention_days = 28
+  description    = "Default logs including Beeper Cloud Function; retained 28 days"
+
+  depends_on = [module.project-services]
 }
