@@ -20,7 +20,8 @@ Terms used when talking about Beeper. Keep definitions short.
 | Plasma | Naming prefix for the Google Cloud projects (`plasma-production`, staging) |
 | Cloud Functions Gen2 | Google’s HTTP function runtime Beeper deploys to (runs on Cloud Run under the hood) |
 | Secret Manager | Google Cloud store for API keys and Twilio credentials injected into the function |
-| receiveMessage | Name of Beeper’s single HTTP entrypoint |
+| receiveMessage | Primary SMS alert handler (Twilio webhook → on-call volunteers) |
+| threeRingsHotCache | Scheduled handler that refreshes the on-call rota cache so alerts are faster |
 | IncomingRequest | Datastore record of an inbound Twilio SMS |
 | OutgoingMessage | Datastore record of a forwarded SMS (linked to the inbound message) |
 | ThreeRingsCache | Datastore cache of Three Rings rota/directory responses |

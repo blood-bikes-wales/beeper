@@ -19,9 +19,12 @@ Beeper is a Google Cloud Function that receives inbound SMS alerts from a bike t
 
 | Name | Location | Notes |
 |------|----------|-------|
-| `receiveMessage` | [`src/index.ts`](../../src/index.ts) | Sole HTTP Cloud Function; Terraform `entry_point` |
+| `receiveMessage` | [`src/functions/receiveMessage.ts`](../../src/functions/receiveMessage.ts) | Twilio SMS webhook; Terraform `entry_point` on `beeper` |
+| `threeRingsHotCache` | [`src/functions/threeRingsHotCache.ts`](../../src/functions/threeRingsHotCache.ts) | Hourly scheduler cache warm; Terraform `entry_point` on `beeper-three-rings-hot-cache` |
+| Deploy barrel | [`src/index.ts`](../../src/index.ts) | Registers both handlers for the shared deploy zip |
 | Package main | `dist/index.js` | Built from TypeScript |
-| Local server | `npm run dev` / `npm run run` | Functions Framework on `:8080` |
+| Local server | `npm run dev` / `npm run run` | Functions Framework on `:8080`, target `receiveMessage` |
+| Hot cache (local) | `npm run run:hotCache` | Functions Framework on `:8080`, target `threeRingsHotCache` |
 | Datastore emulator | `npm run emulator` | `localhost:8081`, project `beeper-local` |
 
 There are no separate workers or CLIs.
@@ -58,7 +61,8 @@ npm test                  # all
 
 ```bash
 npm run emulator   # terminal 1
-npm run dev        # terminal 2 — function + emulator env
+npm run dev        # terminal 2 — receiveMessage + emulator env
+npm run run:hotCache  # optional — threeRingsHotCache only
 ```
 
 Production deploys on push to `main` (`plasma-production`). Staging deploys from PRs to `main` after CI (`plasma-staging-502110`). See root [`readme.md`](../../readme.md) for Terraform and GitHub Environment secrets.
@@ -67,7 +71,8 @@ Production deploys on push to `main` (`plasma-production`). Staging deploys from
 
 | Path | Role |
 |------|------|
-| [`src/index.ts`](../../src/index.ts) | HTTP handler orchestration |
+| [`src/index.ts`](../../src/index.ts) | Deploy barrel (registers both handlers for the shared zip) |
+| [`src/functions/`](../../src/functions/) | HTTP handler implementations |
 | [`src/twilio-webhook.ts`](../../src/twilio-webhook.ts) | Twilio signature validation |
 | [`src/config/index.ts`](../../src/config/index.ts) | Env validation / feature flags |
 | [`src/repository/`](../../src/repository/) | Three Rings HTTP + Datastore cache |

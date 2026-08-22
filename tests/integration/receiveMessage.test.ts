@@ -73,7 +73,7 @@ jest.mock("../../src/utility", () => {
 
 describe("receiveMessage", () => {
 	beforeAll(() => {
-		require("../../src/index");
+		require("../../src/functions/receiveMessage");
 	});
 
 	beforeEach(async () => {

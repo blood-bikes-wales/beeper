@@ -2,13 +2,15 @@
 
 ## Summary
 
-Beeper is a single HTTP Cloud Function (`receiveMessage`) that validates a Twilio SMS webhook, resolves who is on call from Three Rings, and forwards the alert body via Twilio SMS. Datastore stores an audit log of inbound/outbound messages and caches Three Rings API responses.
+Beeper is two Gen2 HTTP Cloud Functions (`receiveMessage` and `threeRingsHotCache`) sharing one deploy artifact. `receiveMessage` validates a Twilio SMS webhook, resolves who is on call from Three Rings, and forwards the alert body via Twilio SMS. `threeRingsHotCache` is invoked hourly by Cloud Scheduler to warm the Three Rings rota cache. Datastore stores an audit log of inbound/outbound messages and caches Three Rings API responses.
 
 ## Components
 
 | Component | Responsibility | Location |
 |-----------|----------------|----------|
-| HTTP handler | Orchestrate validate → log → lookup → SMS | [`src/index.ts`](../../src/index.ts) |
+| SMS handler | Orchestrate validate → log → lookup → SMS | [`src/functions/receiveMessage.ts`](../../src/functions/receiveMessage.ts) |
+| Hot cache handler | Warm Three Rings rota cache on schedule | [`src/functions/threeRingsHotCache.ts`](../../src/functions/threeRingsHotCache.ts) |
+| Cloud Scheduler | Hourly POST to hot-cache function (OIDC) | [`infrastructure/main.tf`](../../infrastructure/main.tf) |
 | Webhook validation | Verify `X-Twilio-Signature` | [`src/twilio-webhook.ts`](../../src/twilio-webhook.ts) |
 | Config | Env vars and `ENABLE_CONTROLLER_ALERTS` | [`src/config/index.ts`](../../src/config/index.ts) |
 | Three Rings HTTP repo | Live rota + directory fetches | [`src/repository/ThreeRingsHttpRepository.ts`](../../src/repository/ThreeRingsHttpRepository.ts) |
@@ -41,6 +43,8 @@ Happy path:
 5. Each volunteer’s directory entry is loaded (cached); `TelProperty` phones are normalized (`07…` → `+44…`).
 6. Outbound SMS is sent with sender ID `BBWales` and the original body. Controllers are included only when `ENABLE_CONTROLLER_ALERTS=true`.
 7. Outbound rows are stored as child `OutgoingMessage` entities; response is **204**.
+
+**Hot cache path** (no Twilio): Cloud Scheduler POSTs to `threeRingsHotCache` hourly → fetches today’s rota from Three Rings → writes `ThreeRingsCache` in Datastore so `receiveMessage` can use a warm cache.
 
 ## Key modules
 
