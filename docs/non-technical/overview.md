@@ -37,4 +37,5 @@ It does not replace BikeTrac or the volunteer rota system. It sits in the middle
 - Technical overview: [../technical/overview.md](../technical/overview.md)
 - Architecture: [../technical/architecture.md](../technical/architecture.md)
 - Glossary: [glossary.md](glossary.md)
+- DPIA: [Data Protection Impact Assessment](https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/14680086/Data+Protection+Impact+Assessment+DPIA) (Confluence only)
 - Root project README: [../../readme.md](../../readme.md)

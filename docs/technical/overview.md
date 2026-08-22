@@ -95,5 +95,7 @@ Names only — values live in `.env` / Secret Manager, never in docs. See [`.env
 - **`TWILIO_WEBHOOK_URL`** must match the URL Twilio posts to exactly (including trailing slash). See [local-twilio-webhook.md](local-twilio-webhook.md).
 - Staging is a **shared** stack: concurrent PRs overwrite the last successful staging deploy; refresh the staging GitHub `TWILIO_WEBHOOK_URL` if the function URI changes.
 - Deploy uses a **two-step** `terraform apply` (upload zip, then function) so source generation stays consistent.
-- Three Rings cache in Datastore has **no TTL**; entries persist until overwritten.
+- Three Rings cache in Datastore (rota and volunteer directory) has a **24-hour TTL** (`expiresAt`).
+- Incoming and outgoing message logs in Datastore have a **28-day TTL**.
+- Cloud Function application logs in Cloud Logging (`_Default` bucket) are retained for **28 days**.
 - Shift matching requires exactly one matching Controller and Duty Trustee shift for “now”, or the handler errors.

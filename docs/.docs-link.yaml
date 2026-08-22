@@ -54,3 +54,12 @@ pages:
     title: "Glossary"
     folder: "non-technical"
     url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12386378/Glossary"
+
+# Private pages that live only in Confluence (no markdown in git).
+# Never pull. Never overwrite from a local stub. Publish only from docs/private/ when asked.
+confluenceOnly:
+  dpia:
+    pageId: "14680086"
+    title: "Data Protection Impact Assessment (DPIA)"
+    folder: "non-technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/14680086/Data+Protection+Impact+Assessment+DPIA"

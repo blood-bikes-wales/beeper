@@ -77,7 +77,15 @@ describe("receiveMessage", () => {
 	});
 
 	beforeEach(async () => {
-		await datastore.delete(datastoreKeysToClean);
+		const ancestor = datastore.key(["IncomingRequest", SMS_MESSAGE_SID]);
+		const [outgoing] = await datastore.runQuery(
+			datastore.createQuery("OutgoingMessage").hasAncestor(ancestor),
+		);
+		const outgoingKeys = outgoing.flatMap((entity) => {
+			const key = entity[datastore.KEY];
+			return key ? [key] : [];
+		});
+		await datastore.delete([...datastoreKeysToClean, ...outgoingKeys]);
 	});
 
 	afterEach(() => {
@@ -145,22 +153,42 @@ describe("receiveMessage", () => {
 			body: INCOMING_BODY,
 			from: INCOMING_FROM,
 		});
+		expect(incomingRequest.expiresAt).toEqual(
+			new Date("2024-01-29T10:30:53.697Z"),
+		);
 
-		// Verify Three Rings responses were cached.
+		const [outgoingMessages] = await datastore.runQuery(
+			datastore
+				.createQuery("OutgoingMessage")
+				.hasAncestor(datastore.key(["IncomingRequest", SMS_MESSAGE_SID])),
+		);
+		expect(outgoingMessages).toHaveLength(1);
+		expect(outgoingMessages[0]?.expiresAt).toEqual(
+			new Date("2024-01-29T10:30:53.697Z"),
+		);
+
+		// Verify Three Rings responses were cached with a 24h TTL.
 		const [rotaCache] = await datastore.get(
 			datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
 		);
 		expect(rotaCache).toBeDefined();
+		expect(rotaCache.expiresAt).toEqual(new Date("2024-01-02T10:30:53.697Z"));
 
 		const [controllerCache] = await datastore.get(
 			datastore.key(["ThreeRingsCache", "volunteer-180262"]),
 		);
 		expect(controllerCache).toBeDefined();
+		expect(controllerCache.expiresAt).toEqual(
+			new Date("2024-01-02T10:30:53.697Z"),
+		);
 
 		const [trusteeCache] = await datastore.get(
 			datastore.key(["ThreeRingsCache", "volunteer-108235"]),
 		);
 		expect(trusteeCache).toBeDefined();
+		expect(trusteeCache.expiresAt).toEqual(
+			new Date("2024-01-02T10:30:53.697Z"),
+		);
 	});
 
 	it("returns 403 when the Twilio webhook signature is invalid", async () => {
@@ -189,6 +217,10 @@ describe("receiveMessage", () => {
 						value: JSON.stringify(rotaFixture),
 						excludeFromIndexes: true,
 					},
+					{
+						name: "expiresAt",
+						value: new Date("2024-01-02T10:30:53.697Z"),
+					},
 				],
 			},
 			{
@@ -199,6 +231,10 @@ describe("receiveMessage", () => {
 						value: JSON.stringify(controllerDirectoryFixture),
 						excludeFromIndexes: true,
 					},
+					{
+						name: "expiresAt",
+						value: new Date("2024-01-02T10:30:53.697Z"),
+					},
 				],
 			},
 			{
@@ -208,6 +244,10 @@ describe("receiveMessage", () => {
 						name: "data",
 						value: JSON.stringify(dutyTrusteeDirectoryFixture),
 						excludeFromIndexes: true,
+					},
+					{
+						name: "expiresAt",
+						value: new Date("2024-01-02T10:30:53.697Z"),
 					},
 				],
 			},
@@ -241,5 +281,88 @@ describe("receiveMessage", () => {
 		// Three Rings API should not have been called.
 		expect(nock.pendingMocks()).toHaveLength(0);
 		expect(mockMessagesCreate).toHaveBeenCalledTimes(1);
+	});
+
+	it("refetches Three Rings rota data when the cache TTL has expired", async () => {
+		await datastore.save([
+			{
+				key: datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
+				data: [
+					{
+						name: "data",
+						value: JSON.stringify({ shifts: [] }),
+						excludeFromIndexes: true,
+					},
+					{
+						name: "expiresAt",
+						value: new Date("2024-01-01T10:30:53.697Z"),
+					},
+				],
+			},
+			{
+				key: datastore.key(["ThreeRingsCache", "volunteer-180262"]),
+				data: [
+					{
+						name: "data",
+						value: JSON.stringify(controllerDirectoryFixture),
+						excludeFromIndexes: true,
+					},
+					{
+						name: "expiresAt",
+						value: new Date("2024-01-02T10:30:53.697Z"),
+					},
+				],
+			},
+			{
+				key: datastore.key(["ThreeRingsCache", "volunteer-108235"]),
+				data: [
+					{
+						name: "data",
+						value: JSON.stringify(dutyTrusteeDirectoryFixture),
+						excludeFromIndexes: true,
+					},
+					{
+						name: "expiresAt",
+						value: new Date("2024-01-02T10:30:53.697Z"),
+					},
+				],
+			},
+		]);
+
+		nock("https://www.3r.org.uk")
+			.get("/stats/export_rotas.json")
+			.query({ start_date: MOCK_ROTA_DAY, end_date: MOCK_ROTA_DAY })
+			.reply(200, rotaFixture);
+
+		await postTwilioWebhook({
+			ToCountry: "GB",
+			ToState: "",
+			SmsMessageSid: SMS_MESSAGE_SID,
+			NumMedia: "0",
+			ToCity: "",
+			FromZip: "",
+			SmsSid: SMS_MESSAGE_SID,
+			FromState: "",
+			SmsStatus: "received",
+			FromCity: "",
+			Body: "Event Alert: expired cache",
+			FromCountry: "GB",
+			To: "+447700900999",
+			ToZip: "",
+			NumSegments: "2",
+			MessageSid: "SM_MOCK",
+			AccountSid: "AC_MOCK",
+			From: "+447896843243",
+			ApiVersion: "2010-04-01",
+		}).expect(204);
+
+		expect(nock.pendingMocks()).toHaveLength(0);
+		expect(mockMessagesCreate).toHaveBeenCalledTimes(1);
+
+		const [rotaCache] = await datastore.get(
+			datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
+		);
+		expect(rotaCache.expiresAt).toEqual(new Date("2024-01-02T10:30:53.697Z"));
+		expect(JSON.parse(rotaCache.data as string)).toEqual(rotaFixture);
 	});
 });

@@ -50,11 +50,11 @@ See the component table above. Types for Twilio and Three Rings payloads live un
 
 | Kind | Purpose |
 |------|---------|
-| `IncomingRequest` | Audit log of inbound Twilio SMS |
-| `OutgoingMessage` | Child entities for forwarded SMS |
+| `IncomingRequest` | Audit log of inbound Twilio SMS (28-day TTL) |
+| `OutgoingMessage` | Child entities for forwarded SMS (28-day TTL) |
 | `ThreeRingsCache` | Cached rota (`rota-{YYYY-MM-DD}`) and volunteer (`volunteer-{id}`) JSON |
 
-Database ID in GCP: `beeper-database` (Datastore mode). Local emulator project: `beeper-local`. Cache entries are not TTL-expired.
+Database ID in GCP: `beeper-database` (Datastore mode). Local emulator project: `beeper-local`. Message logs (`IncomingRequest`, `OutgoingMessage`) expire after **28 days**. Three Rings cache (`rota-{YYYY-MM-DD}` and `volunteer-{id}`) expires after **24 hours** (`expiresAt`). Cloud Function logs in Cloud Logging (`_Default`) are retained for **28 days**.
 
 ## Integrations
 
@@ -65,6 +65,7 @@ Database ID in GCP: `beeper-database` (Datastore mode). Local emulator project: 
 | Three Rings | Outbound HTTP | Rota and volunteer directory / phone |
 | GCP Secret Manager | In | API keys and Twilio credentials at runtime |
 | GCP Datastore | Read/write | Message log and Three Rings cache |
+| GCP Cloud Logging | Outbound (function stdout) | Application logs; `_Default` bucket retained 28 days |
 
 ## Failure modes
 
