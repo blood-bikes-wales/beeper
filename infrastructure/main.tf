@@ -26,6 +26,7 @@ module "project-services" {
     "artifactregistry.googleapis.com",
     "cloudfunctions.googleapis.com",
     "cloudbuild.googleapis.com",
+    "cloudscheduler.googleapis.com",
     "run.googleapis.com",
     "storage.googleapis.com",
     "datastore.googleapis.com",
@@ -209,6 +210,99 @@ resource "google_cloud_run_service_iam_member" "beeper_public_invoker" {
   member   = "allUsers"
 
   depends_on = [google_cloudfunctions2_function.beeper_function]
+}
+
+resource "google_cloudfunctions2_function" "three_rings_hot_cache" {
+  depends_on = [
+    module.project-services,
+    google_storage_bucket_iam_member.source_compute_reader,
+    google_storage_bucket_iam_member.source_cloudbuild_reader,
+    google_project_iam_member.compute_cloudfunctions_developer,
+    google_project_iam_member.compute_datastore_user,
+    google_project_iam_member.compute_secret_accessor,
+    google_firestore_database.database,
+    google_secret_manager_secret_version.three_rings_api_key,
+  ]
+
+  name        = "beeper-three-rings-hot-cache"
+  location    = "europe-west2"
+  description = "Warms the Three Rings rota cache in Datastore so inbound SMS handling avoids a cold Three Rings fetch."
+
+  build_config {
+    runtime     = "nodejs24"
+    entry_point = "threeRingsHotCache"
+    source {
+      storage_source {
+        bucket     = google_storage_bucket.bucket.name
+        object     = google_storage_bucket_object.object.name
+        generation = google_storage_bucket_object.object.generation
+      }
+    }
+  }
+
+  service_config {
+    available_memory   = "256Mi"
+    timeout_seconds    = 30
+    max_instance_count = 1
+    min_instance_count = 0
+
+    environment_variables = {
+      GCP_PROJECT_ID        = var.project_id
+      DATASTORE_DATABASE_ID = google_firestore_database.database.name
+    }
+
+    secret_environment_variables {
+      key        = "THREE_RINGS_API_KEY"
+      project_id = data.google_project.current.number
+      secret     = google_secret_manager_secret.three_rings_api_key.secret_id
+      version    = "latest"
+    }
+  }
+}
+
+resource "google_service_account" "hot_cache_scheduler" {
+  account_id   = "beeper-hot-cache-scheduler"
+  display_name = "Beeper Three Rings hot cache scheduler"
+  project      = var.project_id
+
+  depends_on = [module.project-services]
+}
+
+# Gen2 functions are Cloud Run services; invoker must be re-applied after function
+# replace (recreate clears the Run IAM policy while Terraform may keep this member).
+resource "google_cloud_run_service_iam_member" "hot_cache_scheduler_invoker" {
+  location = google_cloudfunctions2_function.three_rings_hot_cache.location
+  project  = var.project_id
+  service  = google_cloudfunctions2_function.three_rings_hot_cache.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.hot_cache_scheduler.email}"
+
+  depends_on = [google_cloudfunctions2_function.three_rings_hot_cache]
+}
+
+resource "google_cloud_scheduler_job" "three_rings_hot_cache" {
+  name        = "beeper-three-rings-hot-cache"
+  description = "Refresh today's Three Rings rota cache before inbound SMS handling needs it."
+  schedule    = "0 * * * *"
+  time_zone   = "Europe/London"
+  region      = "europe-west2"
+  project     = var.project_id
+
+  http_target {
+    http_method = "POST"
+    uri         = google_cloudfunctions2_function.three_rings_hot_cache.service_config[0].uri
+
+    oidc_token {
+      service_account_email = google_service_account.hot_cache_scheduler.email
+      # Explicit audience avoids auth failures after function recreate / URI churn.
+      audience = google_cloudfunctions2_function.three_rings_hot_cache.service_config[0].uri
+    }
+  }
+
+  depends_on = [
+    module.project-services,
+    google_cloud_run_service_iam_member.hot_cache_scheduler_invoker,
+  ]
 }
 
 resource "google_firestore_database" "database" {

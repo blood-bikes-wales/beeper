@@ -86,6 +86,12 @@ npm run dev
 
 This compiles TypeScript and starts the Cloud Functions Framework on `http://localhost:8080`, targeting the `receiveMessage` function. The Datastore client connects to `localhost:8081` automatically when `DATASTORE_EMULATOR_HOST` is set.
 
+To run the hot-cache handler locally instead:
+
+```bash
+npm run run:hotCache
+```
+
 ### 4. Run without the emulator
 
 To connect to live Cloud Datastore in a GCP project instead:
@@ -319,7 +325,10 @@ Even then, Terraform should still own the bucket, secrets, and IAM. Only the "pu
 
 ```
 src/
-  index.ts                          # Cloud Function entry point
+  index.ts                          # Deploy barrel (registers both handlers)
+  functions/
+    receiveMessage.ts               # Twilio SMS webhook handler
+    threeRingsHotCache.ts           # Scheduled Three Rings rota cache warm
   datastore.ts                      # Datastore client (emulator or live)
   twilio-webhook.ts                 # Twilio webhook signature validation
   config/

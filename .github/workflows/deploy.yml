@@ -23,6 +23,10 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # One terraform apply per environment; never cancel mid-apply (avoids stale state locks).
+    concurrency:
+      group: terraform-${{ inputs.environment }}
+      cancel-in-progress: false
     environment: ${{ inputs.environment }}
 
     steps:
