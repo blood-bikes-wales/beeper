@@ -1,65 +1,65 @@
 cloudId: "https://bloodbikeswales.atlassian.net"
-spaceId: "~557058fdb7bd6307154e4b8ecf7e4efeeb4be7"
+spaceId: "PD"
 projectName: "beeper"
-docsParentId: "12386307" # Software Documentation folder
+docsParentId: "17891506" # Project Documentation space homepage
 mcpServer: "user-Confluence communication server"
 
 folders:
   ".":
-    pageId: "12451877"
+    pageId: "18055243"
     title: "Beeper"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12451877/Beeper"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/18055243/Beeper"
   technical:
-    pageId: "12451893"
-    title: "Technical"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12451893/Technical"
+    pageId: "17924211"
+    title: "Beeper — Technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/17924211/Beeper+Technical"
   non-technical:
-    pageId: "12320957"
-    title: "Non-technical"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12320957/Non-technical"
+    pageId: "18055260"
+    title: "Beeper — Non-technical"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/18055260/Beeper+Non-technical"
 
 pages:
   README.md:
-    pageId: "12451911"
-    title: "Project documentation"
+    pageId: "18022517"
+    title: "Beeper — Docs index"
     folder: "."
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12451911/Project+documentation"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/18022517/Beeper+Docs+index"
   technical/overview.md:
-    pageId: "12320977"
-    title: "Technical overview"
+    pageId: "17891708"
+    title: "Beeper — Technical overview"
     folder: "technical"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12320977/Technical+overview"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/17891708/Beeper+Technical+overview"
   technical/architecture.md:
-    pageId: "12320991"
-    title: "Architecture"
+    pageId: "18055294"
+    title: "Beeper — Architecture"
     folder: "technical"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12320991/Architecture"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/18055294/Beeper+Architecture"
   technical/local-twilio-webhook.md:
-    pageId: "12288030"
+    pageId: "18022507"
     title: "Local Twilio webhook testing"
     folder: "technical"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12288030/Local+Twilio+webhook+testing"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/18022507/Local+Twilio+webhook+testing"
   technical/staging-first-apply-blocker.md:
-    pageId: "12451928"
+    pageId: "17924323"
     title: "Staging first-apply blocker"
     folder: "technical"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12451928/Staging+first-apply+blocker"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/17924323/Staging+first-apply+blocker"
   non-technical/overview.md:
-    pageId: "12321011"
+    pageId: "17891616"
     title: "Non-technical overview"
     folder: "non-technical"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12321011/Non-technical+overview"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/17891616/Non-technical+overview"
   non-technical/glossary.md:
-    pageId: "12386378"
-    title: "Glossary"
+    pageId: "18055276"
+    title: "Beeper — Glossary"
     folder: "non-technical"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/12386378/Glossary"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/18055276/Beeper+Glossary"
 
 # Private pages that live only in Confluence (no markdown in git).
 # Never pull. Never overwrite from a local stub. Publish only from docs/private/ when asked.
 confluenceOnly:
   dpia:
-    pageId: "14680086"
+    pageId: "17924357"
     title: "Data Protection Impact Assessment (DPIA)"
     folder: "non-technical"
-    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/14680086/Data+Protection+Impact+Assessment+DPIA"
+    url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/17924357/Data+Protection+Impact+Assessment+DPIA"

@@ -22,4 +22,4 @@ Confluence sync (if used) is handled by the **docs-sync** skill.
 
 - [Overview](non-technical/overview.md) — what Beeper does and who it serves
 - [Glossary](non-technical/glossary.md) — shared terms
-- [DPIA](https://bloodbikeswales.atlassian.net/wiki/spaces/~557058fdb7bd6307154e4b8ecf7e4efeeb4be7/pages/14680086/Data+Protection+Impact+Assessment+DPIA) — Data Protection Impact Assessment (Confluence only; not stored in this repo)
+- [DPIA](https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/17924357/Data+Protection+Impact+Assessment+DPIA) — Data Protection Impact Assessment (Confluence only; not stored in this repo)
