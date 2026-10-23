@@ -15,7 +15,8 @@ Confluence sync (if used) is handled by the **docs-sync** skill.
 
 - [Overview](technical/overview.md) — purpose, stack, entrypoints, how to run
 - [Architecture](technical/architecture.md) — components, flow, integrations
-- [Local Twilio webhook](technical/local-twilio-webhook.md) — tunnel + emulator testing runbook
+- [Gmail push setup](technical/gmail-push.md) — OAuth sign-in, Pub/Sub watch, and local testing
+- [Dedicated Gmail mailbox](technical/dedicated-mailbox.md) — move the watch off the developer inbox before production
 - [Staging first-apply blocker](technical/staging-first-apply-blocker.md) — resolved staging bootstrap notes (historical)
 
 ## Non-technical

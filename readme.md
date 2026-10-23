@@ -3,17 +3,17 @@
 
 # beeper
 
-A Google Cloud Function that receives inbound SMS alerts from a bike tracking system (BikeTrac) via Twilio, looks up the on-call volunteers from [Three Rings](https://www.3r.org.uk), and forwards the alert to the current Controller and Duty Trustee by SMS.
+A Google Cloud Function that receives BikeTrac alert emails through Gmail push notifications, looks up the on-call volunteers from [Three Rings](https://www.3r.org.uk), and forwards the alert to the current Controller and Duty Trustee by SMS.
 
 ## How it works
 
-1. BikeTrac sends a Twilio SMS alert to a configured phone number when a tracked bike triggers an event (e.g. theft detection).
-2. Twilio forwards the inbound message as an HTTP POST to the `receiveMessage` Cloud Function.
-3. The function validates the Twilio webhook signature.
-4. The inbound request is logged to Cloud Datastore.
+1. BikeTrac sends an email to a Workspace mailbox when a tracked bike triggers an event (e.g. theft detection).
+2. Gmail publishes a mailbox change to a Pub/Sub topic. The push subscription POSTs that notification to the `receiveMessage` Cloud Function.
+3. The function loads new mail since its stored history cursor and keeps messages whose From address matches `GMAIL_ALERT_FROM`.
+4. The inbound alert is logged to Cloud Datastore.
 5. The function queries the Three Rings rota to find who is on shift right now as **Controller** and **Duty Trustee** (responses are cached in Datastore).
 6. It fetches each volunteer's phone number from the Three Rings directory (also cached).
-7. It forwards the original alert body to both volunteers via Twilio SMS and logs each outbound message to Datastore.
+7. It texts the email's plain-text body to those volunteers via Twilio SMS (sender **BBWales**) and logs each outbound message to Datastore.
 
 ## Prerequisites
 
@@ -21,7 +21,8 @@ A Google Cloud Function that receives inbound SMS alerts from a bike tracking sy
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (`gcloud`) with the Datastore emulator component
 - Java 21+ (required by the Datastore emulator)
 - A [Three Rings](https://www.3r.org.uk) account with API access
-- A [Twilio](https://www.twilio.com) account
+- A [Twilio](https://www.twilio.com) account for outbound SMS
+- A Google Workspace mailbox that receives the alert email, and a Desktop OAuth client in the same GCP project
 
 ## Environment variables
 
@@ -31,7 +32,12 @@ Copy `.env.example` to `.env` and fill in the values:
 THREE_RINGS_API_KEY=   # Three Rings API key
 TWILIO_ACCOUNT_SID=    # Twilio account SID (starts with AC...)
 TWILIO_AUTH_TOKEN=     # Twilio auth token
-TWILIO_WEBHOOK_URL=    # Full webhook URL as configured in Twilio (required for signature validation)
+GMAIL_CLIENT_ID=       # Desktop OAuth client id
+GMAIL_CLIENT_SECRET=   # Desktop OAuth client secret
+GMAIL_REFRESH_TOKEN=   # Refresh token from npm run authorize-gmail
+GMAIL_WATCH_USER=      # Workspace address that owns the refresh token
+GMAIL_ALERT_FROM=      # Sender address whose plain-text body is texted
+GMAIL_PUBSUB_TOPIC=    # projects/<project>/topics/beeper-gmail
 GCP_PROJECT_ID=        # GCP project ID when connecting to live Cloud Datastore (npm run run)
 ```
 
@@ -42,9 +48,9 @@ DATASTORE_EMULATOR_HOST=localhost:8081
 DATASTORE_PROJECT_ID=beeper-local
 ```
 
-`TWILIO_WEBHOOK_URL` must match the URL Twilio posts to exactly (including path and trailing slash). When testing locally behind a tunnel such as ngrok, set this to the public URL Twilio sees.
+`GMAIL_WATCH_USER` must be the Workspace account that produced `GMAIL_REFRESH_TOKEN`. Set the OAuth consent screen to **Internal** so that token is not limited to 7 days. See [Gmail push setup](docs/technical/gmail-push.md).
 
-In production, `GCP_PROJECT_ID` is optional because Cloud Functions sets `GOOGLE_CLOUD_PROJECT` automatically.
+In production, `GCP_PROJECT_ID` is optional because Cloud Functions sets `GOOGLE_CLOUD_PROJECT` automatically. `GMAIL_PUBSUB_TOPIC` is set by Terraform.
 
 ## Datastore emulator setup
 
@@ -102,15 +108,21 @@ npm run run
 
 Set `GCP_PROJECT_ID` in `.env` (or ensure `GOOGLE_CLOUD_PROJECT` is set in the environment).
 
-## Running locally with Twilio
+## Authorise the Gmail mailbox
 
-To receive real inbound webhooks from Twilio while developing:
+Sign in once on a laptop. The Cloud Function does not show a login page.
 
-1. Start the Datastore emulator (`npm run emulator`).
-2. Start the function (`npm run dev`).
-3. Expose port 8080 with a tunnel (e.g. ngrok).
-4. Set `TWILIO_WEBHOOK_URL` in `.env` to the tunnel URL, matching Twilio's webhook configuration exactly.
-5. Point your Twilio phone number's inbound webhook at the tunnel URL.
+```bash
+npm run authorize-gmail
+```
+
+Copy the printed refresh token into `GMAIL_REFRESH_TOKEN` and set `GMAIL_WATCH_USER` to the printed address. `npm run authorize-gmail -- --stop` stops the watch for the token currently in the environment. The full setup, including the OAuth client, is in [Gmail push setup](docs/technical/gmail-push.md). Moving off the developer inbox before production is in [Dedicated Gmail mailbox](docs/technical/dedicated-mailbox.md).
+
+To renew the watch locally:
+
+```bash
+npm run run:gmailWatch
+```
 
 ## Running tests
 
@@ -132,7 +144,7 @@ npm run emulator
 npm run test:integration
 ```
 
-Tests use [nock](https://github.com/nock/nock) to intercept Three Rings HTTP requests, [supertest](https://github.com/ladjs/supertest) to call the Cloud Function, and [Jest](https://jestjs.io) for assertions. No real Three Rings or Twilio network calls are made.
+Tests use [nock](https://github.com/nock/nock) to intercept Three Rings and Gmail HTTP requests, [supertest](https://github.com/ladjs/supertest) to call the Cloud Function, and [Jest](https://jestjs.io) for assertions. No real Three Rings, Gmail, or Twilio network calls are made.
 
 ## Building
 
@@ -208,7 +220,7 @@ terraform apply -target=google_storage_bucket_object.object
 terraform apply
 ```
 
-Then set `TWILIO_WEBHOOK_URL` in the GitHub `staging` environment to the staging function URI from:
+Set the Gmail GitHub environment secrets before the first apply. Staging can use the developer mailbox. Production stays on that mailbox until [Dedicated Gmail mailbox](docs/technical/dedicated-mailbox.md) has been followed. The function URI is no longer a public Twilio webhook:
 
 ```bash
 gcloud functions describe beeper --project=plasma-staging-502110 --region=europe-west2 --gen2 --format='value(serviceConfig.uri)'
@@ -246,9 +258,13 @@ Configure GitHub **Environments** `production` and `staging` with:
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Provider (same for both; pool lives in `plasma-production`) |
 | `GCP_SERVICE_ACCOUNT` | Deploy SA email for that environment’s GCP project |
 | `THREE_RINGS_API_KEY` | Three Rings API key |
-| `TWILIO_ACCOUNT_SID` | Twilio account SID |
-| `TWILIO_AUTH_TOKEN` | Twilio auth token |
-| `TWILIO_WEBHOOK_URL` | Environment webhook URL for signature validation |
+| `TWILIO_ACCOUNT_SID` | Twilio account SID (outbound SMS) |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token (outbound SMS) |
+| `GMAIL_CLIENT_ID` | Desktop OAuth client id |
+| `GMAIL_CLIENT_SECRET` | Desktop OAuth client secret |
+| `GMAIL_REFRESH_TOKEN` | Refresh token for the watched mailbox |
+| `GMAIL_WATCH_USER` | Workspace address that owns the refresh token |
+| `GMAIL_ALERT_FROM` | Sender address whose plain-text body is texted |
 
 Each deploy SA needs permission to manage its project stack and `roles/storage.objectAdmin` on `gs://beeper-terraform-state`.
 
@@ -258,7 +274,7 @@ Store sensitive Terraform variables in GitHub Actions secrets (or local gitignor
 
 For this project, one Terraform stack is the right approach. The function depends on resources Terraform already manages:
 
-- Secret Manager (`THREE_RINGS_API_KEY`, Twilio credentials)
+- Secret Manager (`THREE_RINGS_API_KEY`, Twilio credentials, Gmail OAuth secret and refresh token)
 - IAM for the compute service account
 - GCS source bucket
 - Firestore in Datastore mode
@@ -281,19 +297,9 @@ resource "google_storage_bucket_object" "object" {
 
 Pass `app_version` from CI (for example `$GITHUB_SHA`).
 
-#### Missing environment variables
+#### Gmail watch configuration
 
-Terraform currently injects the three secrets, but the app also requires `TWILIO_WEBHOOK_URL` for webhook signature validation. Add it to the function config:
-
-```hcl
-service_config {
-  environment_variables = {
-    TWILIO_WEBHOOK_URL = var.twilio_webhook_url
-  }
-
-  # ... existing secret_environment_variables
-}
-```
+Terraform creates the `beeper-gmail` Pub/Sub topic, the authenticated push subscription, and the daily `beeper-gmail-watch` scheduler. `GMAIL_PUBSUB_TOPIC` is the topic id. `GMAIL_CLIENT_ID`, `GMAIL_WATCH_USER`, and `GMAIL_ALERT_FROM` are plain environment variables. `GMAIL_CLIENT_SECRET` and `GMAIL_REFRESH_TOKEN` come from Secret Manager.
 
 `GCP_PROJECT_ID` is optional in production because Cloud Functions sets `GOOGLE_CLOUD_PROJECT` automatically, and the Datastore client uses `Config.resolveGcpProjectId()`.
 
@@ -325,12 +331,13 @@ Even then, Terraform should still own the bucket, secrets, and IAM. Only the "pu
 
 ```
 src/
-  index.ts                          # Deploy barrel (registers both handlers)
+  index.ts                          # Deploy barrel (registers all handlers)
   functions/
-    receiveMessage.ts               # Twilio SMS webhook handler
+    receiveMessage.ts               # Gmail Pub/Sub push handler
+    renewGmailWatch.ts              # Daily Gmail users.watch renewal
     threeRingsHotCache.ts           # Scheduled Three Rings rota cache warm
+  gmail/                            # OAuth client, history cursor, message parsing
   datastore.ts                      # Datastore client (emulator or live)
-  twilio-webhook.ts                 # Twilio webhook signature validation
   config/
     index.ts                        # Reads and validates environment variables
   repository/
@@ -344,7 +351,7 @@ src/
   types/
     DirectoryResponse.type.ts       # Three Rings directory API response shape
     RotaResponse.type.ts            # Three Rings rota API response shape
-    RequestBody.type.ts             # Inbound Twilio webhook body shape
+    IncomingAlert.type.ts           # Inbound alert id, plain-text body, and sender
     RotaType.enum.ts                # "Controller" | "Duty Trustee"
     VolunteerPropertyType.enum.ts   # Volunteer property types (e.g. TelProperty)
   utility.ts                        # Date helper and phone number redaction
@@ -352,7 +359,7 @@ src/
 tests/
   setup.ts                          # Global Jest setup (env vars, axios adapter, emulator)
   fixtures/                         # Recorded API responses used in integration tests
-  unit/                             # Unit tests (webhook validation, services, utilities)
+  unit/                             # Unit tests (Gmail parsing, services, utilities)
   integration/
     receiveMessage.test.ts          # End-to-end integration test for the Cloud Function
 

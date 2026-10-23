@@ -60,11 +60,16 @@ export class ThreeRingsCachingRepository implements IThreeRingsRepository {
 			return true;
 		}
 
-		const expiresAt =
-			entity.expiresAt instanceof Date
-				? DateTime.fromJSDate(entity.expiresAt)
-				: DateTime.fromISO(String(entity.expiresAt));
+		const expiresAt = expiresAtDateTime(entity.expiresAt);
 		const now = DateTime.fromISO(Utility.getCurrentDate());
 		return !expiresAt.isValid || expiresAt <= now;
 	}
+}
+
+function expiresAtDateTime(expiresAt: Date | string): DateTime {
+	if (expiresAt instanceof Date) {
+		return DateTime.fromJSDate(expiresAt);
+	}
+
+	return DateTime.fromISO(String(expiresAt));
 }

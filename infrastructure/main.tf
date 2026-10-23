@@ -32,7 +32,9 @@ module "project-services" {
     "datastore.googleapis.com",
     "secretmanager.googleapis.com",
     "firestore.googleapis.com",
-    "logging.googleapis.com"
+    "logging.googleapis.com",
+    "pubsub.googleapis.com",
+    "gmail.googleapis.com"
   ]
 
   disable_services_on_destroy = false
@@ -137,6 +139,59 @@ resource "google_secret_manager_secret_version" "twilio_auth_token" {
   secret_data = var.twilio_auth_token
 }
 
+resource "google_secret_manager_secret" "gmail_client_secret" {
+  secret_id = "gmail-client-secret"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [module.project-services]
+}
+
+resource "google_secret_manager_secret_version" "gmail_client_secret" {
+  secret      = google_secret_manager_secret.gmail_client_secret.id
+  secret_data = var.gmail_client_secret
+}
+
+resource "google_secret_manager_secret" "gmail_refresh_token" {
+  secret_id = "gmail-refresh-token"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [module.project-services]
+}
+
+resource "google_secret_manager_secret_version" "gmail_refresh_token" {
+  secret      = google_secret_manager_secret.gmail_refresh_token.id
+  secret_data = var.gmail_refresh_token
+}
+
+# Built from known values so function env vars are known at plan time. Using
+# the topic resource id here fails the first apply with "inconsistent final plan".
+locals {
+  gmail_topic_name = "beeper-gmail"
+  gmail_topic_path = "projects/${var.project_id}/topics/${local.gmail_topic_name}"
+}
+
+resource "google_pubsub_topic" "gmail" {
+  name    = local.gmail_topic_name
+  project = var.project_id
+
+  depends_on = [module.project-services]
+}
+
+resource "google_pubsub_topic_iam_member" "gmail_api_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.gmail.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:gmail-api-push@system.gserviceaccount.com"
+}
+
 resource "google_cloudfunctions2_function" "beeper_function" {
   depends_on = [
     module.project-services,
@@ -149,11 +204,14 @@ resource "google_cloudfunctions2_function" "beeper_function" {
     google_secret_manager_secret_version.three_rings_api_key,
     google_secret_manager_secret_version.twilio_account_sid,
     google_secret_manager_secret_version.twilio_auth_token,
+    google_secret_manager_secret_version.gmail_client_secret,
+    google_secret_manager_secret_version.gmail_refresh_token,
+    google_pubsub_topic.gmail,
   ]
 
   name        = "beeper"
   location    = "europe-west2"
-  description = "A function that receives inbound SMS alerts from a bike tracking system (BikeTrac) via Twilio, looks up the on-call volunteers from Three Rings, and forwards the alert to the current Controller and Duty Trustee by SMS."
+  description = "Receives BikeTrac alert emails via Gmail Pub/Sub, looks up the on-call volunteers from Three Rings, and forwards the alert by SMS."
 
   build_config {
     runtime     = "nodejs24"
@@ -169,15 +227,18 @@ resource "google_cloudfunctions2_function" "beeper_function" {
 
   service_config {
     available_memory   = "256Mi"
-    timeout_seconds    = 10
+    timeout_seconds    = 60
     max_instance_count = 1
     min_instance_count = 0
 
     environment_variables = {
       GCP_PROJECT_ID           = var.project_id
       DATASTORE_DATABASE_ID    = google_firestore_database.database.name
-      TWILIO_WEBHOOK_URL       = var.twilio_webhook_url
       ENABLE_CONTROLLER_ALERTS = false
+      GMAIL_CLIENT_ID          = var.gmail_client_id
+      GMAIL_WATCH_USER         = var.gmail_watch_user
+      GMAIL_ALERT_FROM         = var.gmail_alert_from
+      GMAIL_PUBSUB_TOPIC       = local.gmail_topic_path
     }
 
     secret_environment_variables {
@@ -200,16 +261,61 @@ resource "google_cloudfunctions2_function" "beeper_function" {
       secret     = google_secret_manager_secret.twilio_auth_token.secret_id
       version    = "latest"
     }
+
+    secret_environment_variables {
+      key        = "GMAIL_CLIENT_SECRET"
+      project_id = data.google_project.current.number
+      secret     = google_secret_manager_secret.gmail_client_secret.secret_id
+      version    = "latest"
+    }
+
+    secret_environment_variables {
+      key        = "GMAIL_REFRESH_TOKEN"
+      project_id = data.google_project.current.number
+      secret     = google_secret_manager_secret.gmail_refresh_token.secret_id
+      version    = "latest"
+    }
   }
 }
 
-resource "google_cloud_run_service_iam_member" "beeper_public_invoker" {
+resource "google_service_account" "gmail_push" {
+  account_id   = "beeper-gmail-push"
+  display_name = "Beeper Gmail Pub/Sub push"
+  project      = var.project_id
+
+  depends_on = [module.project-services]
+}
+
+resource "google_cloud_run_service_iam_member" "gmail_push_invoker" {
   location = google_cloudfunctions2_function.beeper_function.location
+  project  = var.project_id
   service  = google_cloudfunctions2_function.beeper_function.name
   role     = "roles/run.invoker"
-  member   = "allUsers"
+  member   = "serviceAccount:${google_service_account.gmail_push.email}"
 
   depends_on = [google_cloudfunctions2_function.beeper_function]
+}
+
+resource "google_pubsub_subscription" "gmail_push" {
+  name    = "beeper-gmail-push"
+  topic   = google_pubsub_topic.gmail.id
+  project = var.project_id
+
+  ack_deadline_seconds = 60
+
+  push_config {
+    push_endpoint = google_cloudfunctions2_function.beeper_function.service_config[0].uri
+
+    oidc_token {
+      service_account_email = google_service_account.gmail_push.email
+      audience              = google_cloudfunctions2_function.beeper_function.service_config[0].uri
+    }
+  }
+
+  depends_on = [
+    module.project-services,
+    google_cloud_run_service_iam_member.gmail_push_invoker,
+  ]
 }
 
 resource "google_cloudfunctions2_function" "three_rings_hot_cache" {
@@ -226,7 +332,7 @@ resource "google_cloudfunctions2_function" "three_rings_hot_cache" {
 
   name        = "beeper-three-rings-hot-cache"
   location    = "europe-west2"
-  description = "Warms the Three Rings rota cache in Datastore so inbound SMS handling avoids a cold Three Rings fetch."
+  description = "Warms the Three Rings rota cache in Datastore so inbound alert handling avoids a cold Three Rings fetch."
 
   build_config {
     runtime     = "nodejs24"
@@ -282,7 +388,7 @@ resource "google_cloud_run_service_iam_member" "hot_cache_scheduler_invoker" {
 
 resource "google_cloud_scheduler_job" "three_rings_hot_cache" {
   name        = "beeper-three-rings-hot-cache"
-  description = "Refresh today's Three Rings rota cache before inbound SMS handling needs it."
+  description = "Refresh today's Three Rings rota cache before inbound alert handling needs it."
   schedule    = "0 * * * *"
   time_zone   = "Europe/London"
   region      = "europe-west2"
@@ -302,6 +408,109 @@ resource "google_cloud_scheduler_job" "three_rings_hot_cache" {
   depends_on = [
     module.project-services,
     google_cloud_run_service_iam_member.hot_cache_scheduler_invoker,
+  ]
+}
+
+resource "google_cloudfunctions2_function" "gmail_watch" {
+  depends_on = [
+    module.project-services,
+    google_storage_bucket_iam_member.source_compute_reader,
+    google_storage_bucket_iam_member.source_cloudbuild_reader,
+    google_project_iam_member.compute_cloudfunctions_developer,
+    google_project_iam_member.compute_datastore_user,
+    google_project_iam_member.compute_secret_accessor,
+    google_firestore_database.database,
+    google_secret_manager_secret_version.gmail_client_secret,
+    google_secret_manager_secret_version.gmail_refresh_token,
+    google_pubsub_topic.gmail,
+  ]
+
+  name        = "beeper-gmail-watch"
+  location    = "europe-west2"
+  description = "Renews the Gmail mailbox watch so Pub/Sub notifications continue."
+
+  build_config {
+    runtime     = "nodejs24"
+    entry_point = "renewGmailWatch"
+    source {
+      storage_source {
+        bucket     = google_storage_bucket.bucket.name
+        object     = google_storage_bucket_object.object.name
+        generation = google_storage_bucket_object.object.generation
+      }
+    }
+  }
+
+  service_config {
+    available_memory   = "256Mi"
+    timeout_seconds    = 30
+    max_instance_count = 1
+    min_instance_count = 0
+
+    environment_variables = {
+      GCP_PROJECT_ID        = var.project_id
+      DATASTORE_DATABASE_ID = google_firestore_database.database.name
+      GMAIL_CLIENT_ID       = var.gmail_client_id
+      GMAIL_WATCH_USER      = var.gmail_watch_user
+      GMAIL_ALERT_FROM      = var.gmail_alert_from
+      GMAIL_PUBSUB_TOPIC    = local.gmail_topic_path
+    }
+
+    secret_environment_variables {
+      key        = "GMAIL_CLIENT_SECRET"
+      project_id = data.google_project.current.number
+      secret     = google_secret_manager_secret.gmail_client_secret.secret_id
+      version    = "latest"
+    }
+
+    secret_environment_variables {
+      key        = "GMAIL_REFRESH_TOKEN"
+      project_id = data.google_project.current.number
+      secret     = google_secret_manager_secret.gmail_refresh_token.secret_id
+      version    = "latest"
+    }
+  }
+}
+
+resource "google_service_account" "gmail_watch_scheduler" {
+  account_id   = "beeper-gmail-watch-scheduler"
+  display_name = "Beeper Gmail watch scheduler"
+  project      = var.project_id
+
+  depends_on = [module.project-services]
+}
+
+resource "google_cloud_run_service_iam_member" "gmail_watch_scheduler_invoker" {
+  location = google_cloudfunctions2_function.gmail_watch.location
+  project  = var.project_id
+  service  = google_cloudfunctions2_function.gmail_watch.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.gmail_watch_scheduler.email}"
+
+  depends_on = [google_cloudfunctions2_function.gmail_watch]
+}
+
+resource "google_cloud_scheduler_job" "gmail_watch" {
+  name        = "beeper-gmail-watch"
+  description = "Renew the Gmail mailbox watch daily so notifications do not expire."
+  schedule    = "0 6 * * *"
+  time_zone   = "Europe/London"
+  region      = "europe-west2"
+  project     = var.project_id
+
+  http_target {
+    http_method = "POST"
+    uri         = google_cloudfunctions2_function.gmail_watch.service_config[0].uri
+
+    oidc_token {
+      service_account_email = google_service_account.gmail_watch_scheduler.email
+      audience              = google_cloudfunctions2_function.gmail_watch.service_config[0].uri
+    }
+  }
+
+  depends_on = [
+    module.project-services,
+    google_cloud_run_service_iam_member.gmail_watch_scheduler_invoker,
   ]
 }
 

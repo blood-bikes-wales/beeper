@@ -14,10 +14,10 @@ It does not replace BikeTrac or the volunteer rota system. It sits in the middle
 
 ## How it works (simple)
 
-1. BikeTrac sends an SMS alert to a Twilio phone number.
-2. Twilio notifies Beeper (a secure web request).
+1. BikeTrac sends an alert email to a Google Workspace mailbox.
+2. Gmail notifies Beeper.
 3. Beeper asks Three Rings who is on shift right now as Duty Trustee (and Controller, when that option is enabled).
-4. Beeper texts those people the same alert content (sender name **BBWales**).
+4. Beeper texts those people the email’s plain-text content (sender name **BBWales**).
 
 ## What success looks like
 
@@ -30,7 +30,7 @@ It does not replace BikeTrac or the volunteer rota system. It sits in the middle
 - In deployed environments today, **Controller alerts are turned off**; only the **Duty Trustee** is texted unless that setting is changed.
 - If the rota is wrong, empty, or has more than one person overlapping for a role, Beeper may fail to send rather than guess.
 - Staging is shared across pull requests — the latest successful deploy is what staging is running.
-- Beeper trusts Twilio’s signature check to prove requests are real; the public URL itself is not a secret.
+- Beeper only accepts Gmail notifications for the mailbox it was signed in as. Other mail in that inbox is ignored unless the sender matches the configured alert address.
 
 ## Where to learn more
 

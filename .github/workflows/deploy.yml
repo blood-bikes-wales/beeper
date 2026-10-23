@@ -69,7 +69,11 @@ jobs:
           TF_VAR_three_rings_api_key: ${{ secrets.THREE_RINGS_API_KEY }}
           TF_VAR_twilio_account_sid: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TF_VAR_twilio_auth_token: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TF_VAR_twilio_webhook_url: ${{ secrets.TWILIO_WEBHOOK_URL }}
+          TF_VAR_gmail_client_id: ${{ secrets.GMAIL_CLIENT_ID }}
+          TF_VAR_gmail_client_secret: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          TF_VAR_gmail_refresh_token: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          TF_VAR_gmail_watch_user: ${{ secrets.GMAIL_WATCH_USER }}
+          TF_VAR_gmail_alert_from: ${{ secrets.GMAIL_ALERT_FROM }}
 
       # Separate apply so the function plans against the known zip generation
       # (same-apply zip+function updates hit "inconsistent final plan" on generation).
@@ -81,4 +85,8 @@ jobs:
           TF_VAR_three_rings_api_key: ${{ secrets.THREE_RINGS_API_KEY }}
           TF_VAR_twilio_account_sid: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TF_VAR_twilio_auth_token: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TF_VAR_twilio_webhook_url: ${{ secrets.TWILIO_WEBHOOK_URL }}
+          TF_VAR_gmail_client_id: ${{ secrets.GMAIL_CLIENT_ID }}
+          TF_VAR_gmail_client_secret: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          TF_VAR_gmail_refresh_token: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          TF_VAR_gmail_watch_user: ${{ secrets.GMAIL_WATCH_USER }}
+          TF_VAR_gmail_alert_from: ${{ secrets.GMAIL_ALERT_FROM }}

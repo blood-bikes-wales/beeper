@@ -1,29 +1,38 @@
 import type { Key } from "@google-cloud/datastore";
 import { DateTime } from "luxon";
 import { datastore } from "../datastore";
-import type { TwilioBody } from "../types/RequestBody.type";
+import type { IncomingAlert } from "../types/IncomingAlert.type";
 import Utility from "../utility";
 
 const MESSAGE_LOG_TTL_DAYS = 28;
 
 export class MessageLogService {
-	logIncomingRequestKey(body: TwilioBody): Key {
-		return datastore.key(["IncomingRequest", body.SmsMessageSid]);
+	incomingKey(id: string): Key {
+		return datastore.key(["IncomingRequest", id]);
 	}
 
-	async logIncomingRequest(body: TwilioBody): Promise<Key> {
-		const key = this.logIncomingRequestKey(body);
+	async hasIncomingRequest(id: string): Promise<boolean> {
+		const [entity] = await datastore.get(this.incomingKey(id));
+		return Boolean(entity);
+	}
+
+	async logIncomingRequest(alert: IncomingAlert): Promise<Key> {
+		const key = this.incomingKey(alert.id);
 		await datastore.save({
 			key,
 			data: {
-				smsMessageSid: body.SmsMessageSid,
-				body: body.Body,
-				from: body.From,
+				messageId: alert.id,
+				body: alert.body,
+				from: alert.from,
 				receivedAt: new Date().toISOString(),
 				expiresAt: this.expiresAt(),
 			},
 		});
 		return key;
+	}
+
+	async deleteIncomingRequest(id: string): Promise<void> {
+		await datastore.delete(this.incomingKey(id));
 	}
 
 	async logOutgoingMessage(
