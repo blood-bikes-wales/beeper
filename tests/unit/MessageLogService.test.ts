@@ -29,9 +29,9 @@ jest.mock("../../src/utility", () => {
 import { MessageLogService } from "../../src/service/message-log.service";
 
 const body = {
-	SmsMessageSid: "SM_test",
-	Body: "Event Alert",
-	From: "+447896843243",
+	id: "msg_test",
+	body: "Event Alert",
+	from: "biketrac@example.com",
 };
 
 describe("MessageLogService", () => {
@@ -46,13 +46,13 @@ describe("MessageLogService", () => {
 
 		const key = await service.logIncomingRequest(body);
 
-		expect(key).toEqual({ path: ["IncomingRequest", "SM_test"] });
+		expect(key).toEqual({ path: ["IncomingRequest", "msg_test"] });
 		expect(mockSave).toHaveBeenCalledWith({
-			key: { path: ["IncomingRequest", "SM_test"] },
+			key: { path: ["IncomingRequest", "msg_test"] },
 			data: {
-				smsMessageSid: "SM_test",
+				messageId: "msg_test",
 				body: "Event Alert",
-				from: "+447896843243",
+				from: "biketrac@example.com",
 				receivedAt: expect.any(String),
 				expiresAt: new Date("2024-01-29T10:30:53.697Z"),
 			},
@@ -62,23 +62,23 @@ describe("MessageLogService", () => {
 	it("stores outgoing messages with a 28-day expiry", async () => {
 		const service = new MessageLogService();
 		const requestKey = {
-			path: ["IncomingRequest", "SM_test"],
+			path: ["IncomingRequest", "msg_test"],
 		} as unknown as Key;
 
 		await service.logOutgoingMessage(
 			requestKey,
 			"+447700900989",
-			"+447896843243",
+			"biketrac@example.com",
 			"Event Alert",
 		);
 
 		expect(mockSave).toHaveBeenCalledWith({
 			key: {
-				path: ["IncomingRequest", "SM_test", "OutgoingMessage"],
+				path: ["IncomingRequest", "msg_test", "OutgoingMessage"],
 			},
 			data: {
 				to: "+447700900989",
-				from: "+447896843243",
+				from: "biketrac@example.com",
 				body: "Event Alert",
 				sentAt: expect.any(String),
 				expiresAt: new Date("2024-01-29T10:30:53.697Z"),

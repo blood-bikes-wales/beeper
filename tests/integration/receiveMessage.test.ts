@@ -8,52 +8,55 @@ import rotaFixture from "../fixtures/rota-export.json";
 
 const MOCK_CURRENT_DATE = "2024-01-01T10:30:53.697Z";
 const MOCK_ROTA_DAY = "2024-01-01";
-const SMS_MESSAGE_SID = "SM7068ddb127c539915189_test";
+const MESSAGE_ID = "msg-1";
+const WATCH_USER = "alerts@example.com";
+const ALERT_FROM = "biketrac@example.com";
+const STORED_HISTORY_ID = "1000";
+const NOTIFICATION_HISTORY_ID = "2000";
+const SMS_BODY = `A new Event has been created for Device KV25DZO NW Tracer - 276125737 at
+20/10/2026 13:45:02
 
-// Datastore keys touched during each test run.
+The event type is: Movement
+
+The location of the event is Dairy Cottage, Bangor LL57 4BP, UK.`;
+const INCOMING_BODY = `Movement
+${SMS_BODY}
+
+View Map
+<https://u2024964.ct.sendgrid.net/ls/click?upn=example>
+
+To confirm theft call +448000496679.
+This is an automated email.`;
+
 const datastoreKeysToClean = [
-	datastore.key(["IncomingRequest", SMS_MESSAGE_SID]),
+	datastore.key(["IncomingRequest", MESSAGE_ID]),
+	datastore.key(["GmailSync", WATCH_USER]),
 	datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
 	datastore.key(["ThreeRingsCache", "volunteer-180262"]),
 	datastore.key(["ThreeRingsCache", "volunteer-108235"]),
 ];
 
-const MOCK_TWILIO_SIGNATURE = "test-twilio-signature";
-
-// Variables prefixed with "mock" are hoisted by ts-jest alongside jest.mock() factories.
 const mockMessagesCreate = jest.fn().mockResolvedValue({ sid: "SM_mock" });
-const mockValidateRequest = jest.fn().mockReturnValue(true);
-const mockGetExpectedTwilioSignature = jest
-	.fn()
-	.mockReturnValue("expected-signature");
+
+function presentKey(key: unknown): unknown[] {
+	if (!key) {
+		return [];
+	}
+
+	return [key];
+}
 
 jest.mock("twilio", () => {
-	const twilioFn = Object.assign(
-		jest.fn(() => ({
-			messages: {
-				create: mockMessagesCreate,
-			},
-		})),
-		{
-			validateRequest: mockValidateRequest,
-			getExpectedTwilioSignature: mockGetExpectedTwilioSignature,
+	const twilioFn = jest.fn(() => ({
+		messages: {
+			create: mockMessagesCreate,
 		},
-	);
+	}));
 	return {
 		__esModule: true,
 		default: twilioFn,
 	};
 });
-
-function postTwilioWebhook(
-	body: Record<string, string>,
-	signature = MOCK_TWILIO_SIGNATURE,
-) {
-	return supertest(getTestServer("receiveMessage"))
-		.post("/")
-		.set("X-Twilio-Signature", signature)
-		.send(body);
-}
 
 jest.mock("../../src/utility", () => {
 	const actual = jest.requireActual(
@@ -71,87 +74,140 @@ jest.mock("../../src/utility", () => {
 	};
 });
 
+function gmailPushBody(historyId: string, emailAddress = WATCH_USER) {
+	const data = Buffer.from(
+		JSON.stringify({ emailAddress, historyId }),
+	).toString("base64url");
+	return {
+		message: {
+			data,
+			messageId: "2070443601311540",
+			publishTime: MOCK_CURRENT_DATE,
+		},
+		subscription: "projects/beeper-local/subscriptions/beeper-gmail-push",
+	};
+}
+
+function postGmailPush(
+	historyId = NOTIFICATION_HISTORY_ID,
+	emailAddress = WATCH_USER,
+) {
+	return supertest(getTestServer("receiveMessage"))
+		.post("/")
+		.send(gmailPushBody(historyId, emailAddress));
+}
+
+function gmailMessage(body: string, from = `BikeTrac <${ALERT_FROM}>`) {
+	return {
+		id: MESSAGE_ID,
+		payload: {
+			mimeType: "text/plain",
+			headers: [{ name: "From", value: from }],
+			body: { data: Buffer.from(body).toString("base64url") },
+		},
+	};
+}
+
+function nockGmailAlert(body = INCOMING_BODY, from?: string) {
+	nock("https://gmail.googleapis.com")
+		.get("/gmail/v1/users/me/history")
+		.query(true)
+		.reply(200, {
+			history: [
+				{ id: "1500", messagesAdded: [{ message: { id: MESSAGE_ID } }] },
+			],
+			historyId: NOTIFICATION_HISTORY_ID,
+		});
+	nock("https://gmail.googleapis.com")
+		.get(`/gmail/v1/users/me/messages/${MESSAGE_ID}`)
+		.query(true)
+		.reply(200, gmailMessage(body, from));
+}
+
+function nockThreeRings() {
+	nock("https://www.3r.org.uk")
+		.get("/stats/export_rotas.json")
+		.query({ start_date: MOCK_ROTA_DAY, end_date: MOCK_ROTA_DAY })
+		.reply(200, rotaFixture);
+
+	nock("https://www.3r.org.uk")
+		.get("/directory/180262?format=json")
+		.reply(200, controllerDirectoryFixture);
+
+	nock("https://www.3r.org.uk")
+		.get("/directory/108235?format=json")
+		.reply(200, dutyTrusteeDirectoryFixture);
+}
+
+async function seedHistory(historyId = STORED_HISTORY_ID) {
+	await datastore.save({
+		key: datastore.key(["GmailSync", WATCH_USER]),
+		data: {
+			mailbox: WATCH_USER,
+			historyId,
+			updatedAt: MOCK_CURRENT_DATE,
+		},
+	});
+}
+
 describe("receiveMessage", () => {
 	beforeAll(() => {
 		require("../../src/functions/receiveMessage");
+		nock("https://oauth2.googleapis.com")
+			.post("/token")
+			.reply(200, {
+				access_token: "ya29.test",
+				expires_in: 3600,
+				token_type: "Bearer",
+			})
+			.persist();
 	});
 
 	beforeEach(async () => {
-		const ancestor = datastore.key(["IncomingRequest", SMS_MESSAGE_SID]);
+		const ancestor = datastore.key(["IncomingRequest", MESSAGE_ID]);
 		const [outgoing] = await datastore.runQuery(
 			datastore.createQuery("OutgoingMessage").hasAncestor(ancestor),
 		);
-		const outgoingKeys = outgoing.flatMap((entity) => {
-			const key = entity[datastore.KEY];
-			return key ? [key] : [];
-		});
+		const outgoingKeys = outgoing.flatMap((entity) =>
+			presentKey(entity[datastore.KEY]),
+		);
 		await datastore.delete([...datastoreKeysToClean, ...outgoingKeys]);
 	});
 
 	afterEach(() => {
 		nock.cleanAll();
+		nock("https://oauth2.googleapis.com")
+			.post("/token")
+			.reply(200, {
+				access_token: "ya29.test",
+				expires_in: 3600,
+				token_type: "Bearer",
+			})
+			.persist();
 		mockMessagesCreate.mockClear();
-		mockValidateRequest.mockClear();
-		mockValidateRequest.mockReturnValue(true);
-		mockGetExpectedTwilioSignature.mockClear();
-		mockGetExpectedTwilioSignature.mockReturnValue("expected-signature");
 	});
 
-	it("returns 204 when Three Rings rota export succeeds", async () => {
-		nock("https://www.3r.org.uk")
-			.get("/stats/export_rotas.json")
-			.query({ start_date: MOCK_ROTA_DAY, end_date: MOCK_ROTA_DAY })
-			.reply(200, rotaFixture);
+	it("forwards the email plain text to the duty trustee", async () => {
+		await seedHistory();
+		nockThreeRings();
+		nockGmailAlert();
 
-		nock("https://www.3r.org.uk")
-			.get("/directory/180262?format=json")
-			.reply(200, controllerDirectoryFixture);
-
-		nock("https://www.3r.org.uk")
-			.get("/directory/108235?format=json")
-			.reply(200, dutyTrusteeDirectoryFixture);
-
-		const INCOMING_BODY =
-			"Event Alert: Bike Over at 01/01/2024 10:32:30 for Device KS72RRV West/Swansea Tracer -276129403. Τo confirm theft call 0800 0496679";
-		const INCOMING_FROM = "+447896843243";
-
-		await postTwilioWebhook({
-			ToCountry: "GB",
-			ToState: "",
-			SmsMessageSid: SMS_MESSAGE_SID,
-			NumMedia: "0",
-			ToCity: "",
-			FromZip: "",
-			SmsSid: SMS_MESSAGE_SID,
-			FromState: "",
-			SmsStatus: "received",
-			FromCity: "",
-			Body: INCOMING_BODY,
-			FromCountry: "GB",
-			To: "+447700900999",
-			ToZip: "",
-			NumSegments: "2",
-			MessageSid: "SM_MOCK",
-			AccountSid: "AC_MOCK",
-			From: INCOMING_FROM,
-			ApiVersion: "2010-04-01",
-		}).expect(204);
+		await postGmailPush().expect(204);
 
 		expect(mockMessagesCreate).toHaveBeenCalledTimes(1);
 		expect(mockMessagesCreate).toHaveBeenCalledWith({
-			body: INCOMING_BODY,
+			body: SMS_BODY,
 			from: "BBWales",
-			to: "+447700900989", // duty trustee only (ENABLE_CONTROLLER_ALERTS unset)
+			to: "+447700900989",
 		});
 
-		// Verify the incoming request was logged to Datastore.
 		const [incomingRequest] = await datastore.get(
-			datastore.key(["IncomingRequest", SMS_MESSAGE_SID]),
+			datastore.key(["IncomingRequest", MESSAGE_ID]),
 		);
 		expect(incomingRequest).toMatchObject({
-			smsMessageSid: SMS_MESSAGE_SID,
-			body: INCOMING_BODY,
-			from: INCOMING_FROM,
+			messageId: MESSAGE_ID,
+			body: SMS_BODY,
+			from: ALERT_FROM,
 		});
 		expect(incomingRequest.expiresAt).toEqual(
 			new Date("2024-01-29T10:30:53.697Z"),
@@ -160,14 +216,18 @@ describe("receiveMessage", () => {
 		const [outgoingMessages] = await datastore.runQuery(
 			datastore
 				.createQuery("OutgoingMessage")
-				.hasAncestor(datastore.key(["IncomingRequest", SMS_MESSAGE_SID])),
+				.hasAncestor(datastore.key(["IncomingRequest", MESSAGE_ID])),
 		);
 		expect(outgoingMessages).toHaveLength(1);
 		expect(outgoingMessages[0]?.expiresAt).toEqual(
 			new Date("2024-01-29T10:30:53.697Z"),
 		);
 
-		// Verify Three Rings responses were cached with a 24h TTL.
+		const [sync] = await datastore.get(
+			datastore.key(["GmailSync", WATCH_USER]),
+		);
+		expect(sync.historyId).toBe(NOTIFICATION_HISTORY_ID);
+
 		const [rotaCache] = await datastore.get(
 			datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
 		);
@@ -191,99 +251,86 @@ describe("receiveMessage", () => {
 		);
 	});
 
-	it("returns 403 when the Twilio webhook signature is invalid", async () => {
-		mockValidateRequest.mockReturnValue(false);
-
-		await postTwilioWebhook(
-			{
-				SmsMessageSid: SMS_MESSAGE_SID,
-				Body: "Event Alert",
-				From: "+447896843243",
-			},
-			"invalid-signature",
-		).expect(403);
+	it("acks a notification for a different mailbox", async () => {
+		await postGmailPush(NOTIFICATION_HISTORY_ID, "other@example.com").expect(
+			204,
+		);
 
 		expect(mockMessagesCreate).not.toHaveBeenCalled();
 	});
 
+	it("acks a notification that is not newer than the stored cursor", async () => {
+		await seedHistory(NOTIFICATION_HISTORY_ID);
+
+		await postGmailPush(NOTIFICATION_HISTORY_ID).expect(204);
+
+		expect(mockMessagesCreate).not.toHaveBeenCalled();
+		expect(
+			nock
+				.pendingMocks()
+				.filter((mock) => mock.includes("gmail.googleapis.com")),
+		).toHaveLength(0);
+	});
+
+	it("does not text mail from another sender", async () => {
+		await seedHistory();
+		nockGmailAlert("hello", "Someone <other@example.com>");
+
+		await postGmailPush().expect(204);
+
+		expect(mockMessagesCreate).not.toHaveBeenCalled();
+		const [sync] = await datastore.get(
+			datastore.key(["GmailSync", WATCH_USER]),
+		);
+		expect(sync.historyId).toBe(NOTIFICATION_HISTORY_ID);
+	});
+
+	it("advances past a message deleted before it could be read", async () => {
+		await seedHistory();
+		nock("https://gmail.googleapis.com")
+			.get("/gmail/v1/users/me/history")
+			.query(true)
+			.reply(200, {
+				history: [
+					{ id: "1500", messagesAdded: [{ message: { id: MESSAGE_ID } }] },
+				],
+				historyId: NOTIFICATION_HISTORY_ID,
+			});
+		nock("https://gmail.googleapis.com")
+			.get(`/gmail/v1/users/me/messages/${MESSAGE_ID}`)
+			.query(true)
+			.reply(404, {
+				error: { code: 404, message: "Requested entity was not found." },
+			});
+
+		await postGmailPush().expect(204);
+
+		expect(mockMessagesCreate).not.toHaveBeenCalled();
+		const [sync] = await datastore.get(
+			datastore.key(["GmailSync", WATCH_USER]),
+		);
+		expect(sync.historyId).toBe(NOTIFICATION_HISTORY_ID);
+	});
+
 	it("uses cached Three Rings data on a repeat request", async () => {
-		// Pre-populate the cache so no HTTP calls to Three Rings are needed.
+		await seedHistory();
 		await datastore.save([
-			{
-				key: datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
-				data: [
-					{
-						name: "data",
-						value: JSON.stringify(rotaFixture),
-						excludeFromIndexes: true,
-					},
-					{
-						name: "expiresAt",
-						value: new Date("2024-01-02T10:30:53.697Z"),
-					},
-				],
-			},
-			{
-				key: datastore.key(["ThreeRingsCache", "volunteer-180262"]),
-				data: [
-					{
-						name: "data",
-						value: JSON.stringify(controllerDirectoryFixture),
-						excludeFromIndexes: true,
-					},
-					{
-						name: "expiresAt",
-						value: new Date("2024-01-02T10:30:53.697Z"),
-					},
-				],
-			},
-			{
-				key: datastore.key(["ThreeRingsCache", "volunteer-108235"]),
-				data: [
-					{
-						name: "data",
-						value: JSON.stringify(dutyTrusteeDirectoryFixture),
-						excludeFromIndexes: true,
-					},
-					{
-						name: "expiresAt",
-						value: new Date("2024-01-02T10:30:53.697Z"),
-					},
-				],
-			},
+			cacheEntity(`rota-${MOCK_ROTA_DAY}`, rotaFixture),
+			cacheEntity("volunteer-180262", controllerDirectoryFixture),
+			cacheEntity("volunteer-108235", dutyTrusteeDirectoryFixture),
 		]);
+		nockGmailAlert("Event Alert: repeat request");
 
-		const INCOMING_BODY = "Event Alert: repeat request";
-		const INCOMING_FROM = "+447896843243";
+		await postGmailPush().expect(204);
 
-		await postTwilioWebhook({
-			ToCountry: "GB",
-			ToState: "",
-			SmsMessageSid: SMS_MESSAGE_SID,
-			NumMedia: "0",
-			ToCity: "",
-			FromZip: "",
-			SmsSid: SMS_MESSAGE_SID,
-			FromState: "",
-			SmsStatus: "received",
-			FromCity: "",
-			Body: INCOMING_BODY,
-			FromCountry: "GB",
-			To: "+447700900999",
-			ToZip: "",
-			NumSegments: "2",
-			MessageSid: "SM_MOCK",
-			AccountSid: "AC_MOCK",
-			From: INCOMING_FROM,
-			ApiVersion: "2010-04-01",
-		}).expect(204);
-
-		// Three Rings API should not have been called.
-		expect(nock.pendingMocks()).toHaveLength(0);
+		expect(
+			nock.pendingMocks().filter((mock) => mock.includes("3r.org.uk")),
+		).toHaveLength(0);
 		expect(mockMessagesCreate).toHaveBeenCalledTimes(1);
 	});
 
 	it("refetches Three Rings rota data when the cache TTL has expired", async () => {
+		await seedHistory();
 		await datastore.save([
 			{
 				key: datastore.key(["ThreeRingsCache", `rota-${MOCK_ROTA_DAY}`]),
@@ -293,70 +340,23 @@ describe("receiveMessage", () => {
 						value: JSON.stringify({ shifts: [] }),
 						excludeFromIndexes: true,
 					},
-					{
-						name: "expiresAt",
-						value: new Date("2024-01-01T10:30:53.697Z"),
-					},
+					{ name: "expiresAt", value: new Date("2024-01-01T10:30:53.697Z") },
 				],
 			},
-			{
-				key: datastore.key(["ThreeRingsCache", "volunteer-180262"]),
-				data: [
-					{
-						name: "data",
-						value: JSON.stringify(controllerDirectoryFixture),
-						excludeFromIndexes: true,
-					},
-					{
-						name: "expiresAt",
-						value: new Date("2024-01-02T10:30:53.697Z"),
-					},
-				],
-			},
-			{
-				key: datastore.key(["ThreeRingsCache", "volunteer-108235"]),
-				data: [
-					{
-						name: "data",
-						value: JSON.stringify(dutyTrusteeDirectoryFixture),
-						excludeFromIndexes: true,
-					},
-					{
-						name: "expiresAt",
-						value: new Date("2024-01-02T10:30:53.697Z"),
-					},
-				],
-			},
+			cacheEntity("volunteer-180262", controllerDirectoryFixture),
+			cacheEntity("volunteer-108235", dutyTrusteeDirectoryFixture),
 		]);
-
 		nock("https://www.3r.org.uk")
 			.get("/stats/export_rotas.json")
 			.query({ start_date: MOCK_ROTA_DAY, end_date: MOCK_ROTA_DAY })
 			.reply(200, rotaFixture);
+		nockGmailAlert("Event Alert: expired cache");
 
-		await postTwilioWebhook({
-			ToCountry: "GB",
-			ToState: "",
-			SmsMessageSid: SMS_MESSAGE_SID,
-			NumMedia: "0",
-			ToCity: "",
-			FromZip: "",
-			SmsSid: SMS_MESSAGE_SID,
-			FromState: "",
-			SmsStatus: "received",
-			FromCity: "",
-			Body: "Event Alert: expired cache",
-			FromCountry: "GB",
-			To: "+447700900999",
-			ToZip: "",
-			NumSegments: "2",
-			MessageSid: "SM_MOCK",
-			AccountSid: "AC_MOCK",
-			From: "+447896843243",
-			ApiVersion: "2010-04-01",
-		}).expect(204);
+		await postGmailPush().expect(204);
 
-		expect(nock.pendingMocks()).toHaveLength(0);
+		expect(
+			nock.pendingMocks().filter((mock) => mock.includes("3r.org.uk")),
+		).toHaveLength(0);
 		expect(mockMessagesCreate).toHaveBeenCalledTimes(1);
 
 		const [rotaCache] = await datastore.get(
@@ -366,3 +366,13 @@ describe("receiveMessage", () => {
 		expect(JSON.parse(rotaCache.data as string)).toEqual(rotaFixture);
 	});
 });
+
+function cacheEntity(name: string, value: unknown) {
+	return {
+		key: datastore.key(["ThreeRingsCache", name]),
+		data: [
+			{ name: "data", value: JSON.stringify(value), excludeFromIndexes: true },
+			{ name: "expiresAt", value: new Date("2024-01-02T10:30:53.697Z") },
+		],
+	};
+}

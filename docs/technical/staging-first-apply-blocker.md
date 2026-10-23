@@ -1,15 +1,15 @@
 # Staging first-apply — RESOLVED (2026-08-08)
 
+Resolved on 2026-08-08.
+
 Billing is linked and the staging stack was applied successfully under account `e.fflynn-harding@bloodbikes.wales`.
 
 - GCP project: `plasma-staging-502110`
 - Remote state: `gs://beeper-terraform-state/envs/staging/`
 - Function URI: `https://beeper-dj6nqdzpfa-nw.a.run.app`
-- Staging GitHub secret `TWILIO_WEBHOOK_URL` updated to that URI
+- Staging GitHub secret `TWILIO_WEBHOOK_URL` was updated to that URI for the old inbound Twilio webhook. Inbound alerts now arrive through Gmail Pub/Sub. The function is not a public webhook.
 
-Point a Twilio webhook / Messaging Service at the staging URL if you want live SMS tests against staging.
-
----
+Outbound SMS still uses Twilio. Gmail mailbox setup is in [Gmail push setup](gmail-push.md).
 
 ## Original blocker (historical)
 

@@ -34,9 +34,9 @@ pages:
     title: "Beeper — Architecture"
     folder: "technical"
     url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/18055294/Beeper+Architecture"
-  technical/local-twilio-webhook.md:
+  technical/gmail-push.md:
     pageId: "18022507"
-    title: "Local Twilio webhook testing"
+    title: "Gmail push setup"
     folder: "technical"
     url: "https://bloodbikeswales.atlassian.net/wiki/spaces/PD/pages/18022507/Local+Twilio+webhook+testing"
   technical/staging-first-apply-blocker.md:

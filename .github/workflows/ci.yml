@@ -125,6 +125,12 @@ jobs:
           THREE_RINGS_API_KEY: test-api-key
           TWILIO_ACCOUNT_SID: sm-account-sid
           TWILIO_AUTH_TOKEN: sm-auth-token
+          GMAIL_CLIENT_ID: test-client-id
+          GMAIL_CLIENT_SECRET: test-client-secret
+          GMAIL_REFRESH_TOKEN: test-refresh-token
+          GMAIL_WATCH_USER: alerts@example.com
+          GMAIL_ALERT_FROM: biketrac@example.com
+          GMAIL_PUBSUB_TOPIC: projects/beeper-local/topics/beeper-gmail
           DATASTORE_EMULATOR_HOST: localhost:8081
           DATASTORE_PROJECT_ID: beeper-local
 

@@ -22,8 +22,28 @@ export default class Config {
 		return required("TWILIO_AUTH_TOKEN");
 	}
 
-	static getTwilioWebhookUrl(): string {
-		return required("TWILIO_WEBHOOK_URL");
+	static getGmailClientId(): string {
+		return required("GMAIL_CLIENT_ID");
+	}
+
+	static getGmailClientSecret(): string {
+		return required("GMAIL_CLIENT_SECRET");
+	}
+
+	static getGmailRefreshToken(): string {
+		return required("GMAIL_REFRESH_TOKEN");
+	}
+
+	static getGmailWatchUser(): string {
+		return required("GMAIL_WATCH_USER");
+	}
+
+	static getGmailAlertFrom(): string {
+		return required("GMAIL_ALERT_FROM");
+	}
+
+	static getGmailPubsubTopic(): string {
+		return required("GMAIL_PUBSUB_TOPIC");
 	}
 
 	static getThreeRingsApiKey(): string {

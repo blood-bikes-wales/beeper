@@ -12,9 +12,10 @@ export default class Utility {
 	}
 
 	static formatPhoneNumber(phoneNumber: string): string {
-		if (phoneNumber.startsWith("07")) {
-			return `+44${phoneNumber.slice(1)}`;
+		if (!phoneNumber.startsWith("07")) {
+			return phoneNumber;
 		}
-		return phoneNumber;
+
+		return `+44${phoneNumber.slice(1)}`;
 	}
 }
